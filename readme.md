@@ -2,6 +2,12 @@
 
 Creates a simple SOCKS5 server and exposes several events.
 
+## Installation
+
+```
+npm install simple-socks
+```
+
 ## Example
 
 The following example exists at [examples/createServer.js](examples/createServer.js):
