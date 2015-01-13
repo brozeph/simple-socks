@@ -2,15 +2,37 @@
 
 var
 	socks5 = require('../lib'),
-	server = socks5.createServer();
+	server = socks5.createServer({
+		authenticate : function (username, password, callback) {
+			// verify username/password
+			if (username !== 'foo' || password !== 'bar') {
+				// respond with auth failure (can be any error)
+				return setImmediate(callback, new Error('invalid credentials'));
+			}
+
+			// return successful authentication
+			return setImmediate(callback);
+		}
+	});
 
 // start listening!
 server.listen(1080);
 
-server.on('handshake', function (socket) {
+server.on('handshake', function () {
 	console.log();
 	console.log('------------------------------------------------------------');
-	console.log('new socks5 client from %s:%d', socket.remoteAddress, socket.remotePort);
+	console.log('new client connection');
+});
+
+// When authentication succeeds
+server.on('authenticate', function (username) {
+	console.log('user %s successfully authenticated!', username);
+});
+
+// When authentication fails
+server.on('authenticateError', function (username, err) {
+	console.log('user %s failed to authenticate...', username);
+	console.log(err);
 });
 
 // When a reqest arrives for a remote destination

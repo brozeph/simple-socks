@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "proxies requests ",
   "main": "lib",
   "scripts": {
@@ -15,6 +15,8 @@
     "socksv5",
     "rfc 1928",
     "rfc1928",
+    "rfc 1929",
+    "rfc1929",
     "socks server",
     "socks5 server",
     "socksv5 server"
@@ -24,7 +26,7 @@
     "url": "https://github.com/brozeph/simple-socks.git"
   },
   "bugs": {
-    "url" : "http://github.com/brozeph/simple-socks/issues"
+    "url": "http://github.com/brozeph/simple-socks/issues"
   },
   "dependencies": {
     "binary": "^0.3.0",
