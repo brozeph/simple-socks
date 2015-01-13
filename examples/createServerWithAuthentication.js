@@ -25,12 +25,12 @@ server.on('handshake', function () {
 });
 
 // When authentication succeeds
-server.on('authentication', function (username) {
+server.on('authenticate', function (username) {
 	console.log('user %s successfully authenticated!', username);
 });
 
 // When authentication fails
-server.on('authenticationError', function (username, err) {
+server.on('authenticateError', function (username, err) {
 	console.log('user %s failed to authenticate...', username);
 	console.log(err);
 });

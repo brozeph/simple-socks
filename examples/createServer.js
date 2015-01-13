@@ -7,10 +7,10 @@ var
 // start listening!
 server.listen(1080);
 
-server.on('handshake', function () {
+server.on('handshake', function (socket) {
 	console.log();
 	console.log('------------------------------------------------------------');
-	console.log('new client connection');
+	console.log('new socks5 client from %s:%d', socket.remoteAddress, socket.remotePort);
 });
 
 // When a reqest arrives for a remote destination
