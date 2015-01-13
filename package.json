@@ -1,0 +1,39 @@
+{
+  "name": "simple-socks",
+  "version": "0.1.0",
+  "description": "proxies requests ",
+  "main": "lib",
+  "scripts": {
+    "start": "supervisor lib",
+    "test": "gulp jshint"
+  },
+  "author": "https://github.com/brozeph",
+  "license": "MIT",
+  "keywords": [
+    "socks",
+    "socks5",
+    "socksv5",
+    "rfc 1928",
+    "rfc1928",
+    "socks server",
+    "socks5 server",
+    "socksv5 server"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brozeph/simple-socks.git"
+  },
+  "bugs": {
+    "url" : "http://github.com/brozeph/simple-socks/issues"
+  },
+  "dependencies": {
+    "binary": "^0.3.0",
+    "put": "0.0.6"
+  },
+  "devDependencies": {
+    "gulp": "^3.8.10",
+    "gulp-jshint": "^1.9.0",
+    "jshint-stylish": "^1.0.0",
+    "supervisor": "^0.6.0"
+  }
+}

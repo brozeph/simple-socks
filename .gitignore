@@ -1,0 +1,11 @@
+# OS generated files #
+######################
+.DS_Store
+
+# Everything else    #
+######################
+node_modules
+reports
+*.esproj
+*.esproj?
+*.csr
