@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "proxies requests ",
   "main": "lib",
   "scripts": {
@@ -26,7 +26,7 @@
     "url": "https://github.com/brozeph/simple-socks.git"
   },
   "bugs": {
-    "url" : "http://github.com/brozeph/simple-socks/issues"
+    "url": "http://github.com/brozeph/simple-socks/issues"
   },
   "dependencies": {
     "binary": "^0.3.0",
