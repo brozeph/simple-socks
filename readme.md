@@ -16,12 +16,21 @@ The following example exists at [examples/createServer.js](examples/createServer
 'use strict';
 
 var
-	socks5 = require('simple-socks'),
-	server = socks5.createServer().listen(1080);
+socks5 = require('../lib'),
+server = socks5.createServer().listen(1080);
 
 // When a reqest arrives for a remote destination
-server.on('proxyConnect', function (host, port) {
-	console.log('connected to remote server at %s:%d', host, port);
+server.on('proxyConnect', function (info, destination) {
+	console.log('connected to remote server at %s:%d', info.host, info.port);
+
+	destination.on('data', function (data) {
+		console.log(data.length);
+	});
+});
+
+// When data arrives from the remote connection
+server.on('proxyData', function (data) {
+	console.log(data.length);
 });
 
 // When an error occurs connecting to remote destination
@@ -69,13 +78,37 @@ server.listen(1080, '0.0.0.0', function () {
 
 This event is emitted each time a connection is requested to a remote destination. The callback accepts two arguments:
 
-* host - the TCP address of the remote server
-* port - the TCP port of the remote server
+* info - object with two fields
+	* host - the TCP address of the remote server
+	* port - the TCP port of the remote server
+* destination - the destination TCP [net.Socket](http://nodejs.org/api/net.html#net_class_net_socket)
 
 ```javascript
 // When a reqest arrives for a remote destination
-server.on('proxyConnect', function (host, port) {
-	console.log('connected to remote server at %s:%d', host, port);
+server.on('proxyConnect', function (info, destination) {
+	console.log('connected to remote server at %s:%d', info.host, info.port);
+});
+```
+
+### proxyData
+
+This event is emitted each time a remote connection returns data:
+
+```javascript
+// When a reqest arrives for a remote destination
+server.on('proxyData', function (data) {
+	console.log('data received from remote destination: %d', data.length);
+});
+```
+
+**Note:** This can also be accomplished by listening to the `data` event on the `destination` connection received in the `proxyConnect` event:
+
+```javascript
+// When a reqest arrives for a remote destination
+server.on('proxyConnect', function (info, destination) {
+	destination.on('data', function (data) {
+		console.log('data received from remote destination: %d', data.length);
+	});
 });
 ```
 
@@ -95,8 +128,8 @@ server.on('proxyError', function (err) {
 
 When a socket connection is closed by the server, the `proxyEnd` event is emitted. It returns two arguments in the callback:
 
-* response - the specific RFC 1928 documented response code
-* args - information about the socket request including:
+* response - the specific [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) documented response code
+* args - [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) fields for the proxy request including
 	* `ver`
 	* `cmd`
 	* `atype`
