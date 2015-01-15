@@ -1,3 +1,7 @@
+# v0.2.1 - 2015/01/15
+
+* Fixing bug present when tracking active sessions
+
 # v0.2.0 - 2015/01/13
 
 * Added support for USERNAME/PASSWORD authentication ([RFC 1929](https://www.ietf.org/rfc/rfc1929.txt))
