@@ -1,7 +1,3 @@
-# v0.2.4 - 2014/04/05
-
-* Tightening up domain usage and refactoring duplicate code out
-
 # v0.2.3 - 2015/04/05
 
 * Fixing issue where unhandled exception bubbles from authentication
