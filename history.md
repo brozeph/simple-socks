@@ -1,3 +1,7 @@
+# v0.2.2 - 2015/04/05
+
+* Fixing issue where unhandled exception bubbles from authentication
+
 # v0.2.1 - 2015/01/15
 
 * Fixing bug present when tracking active sessions
