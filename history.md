@@ -1,6 +1,10 @@
-# v0.2.2 - 2015/04/05
+# v0.2.3 - 2015/04/05
 
 * Fixing issue where unhandled exception bubbles from authentication
+
+# v0.2.2 - 2015/01/15
+
+* Merge pull request to resolve error with active session tracking
 
 # v0.2.1 - 2015/01/15
 
