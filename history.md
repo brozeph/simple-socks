@@ -1,3 +1,7 @@
+# v0.2.4 - 2015/04/09
+
+* Ensuring any errors that emit from the underlying socket are surfaced to the proxy server
+
 # v0.2.3 - 2015/04/05
 
 * Fixing issue where unhandled exception bubbles from authentication
