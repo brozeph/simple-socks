@@ -1,6 +1,8 @@
 # v0.2.5 - 2016/12/02
 
 * Added ability to run multiple instances of the server at once (thank you to @pronskiy)
+* Moved events to a constant that is exported via the module
+* Updated tested versions of Node in Travis configuration
 
 # v0.2.4 - 2015/04/09
 
