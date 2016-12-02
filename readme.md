@@ -2,6 +2,8 @@
 
 Creates a simple SOCKS5 server and exposes additional SOCKS5 proxy events.
 
+[![Build Status](https://travis-ci.org/brozeph/simple-socks.svg?branch=master)](https://travis-ci.org/brozeph/simple-socks)
+
 ## Installation
 
 ```
