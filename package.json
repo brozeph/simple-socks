@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "proxies requests ",
   "main": "lib",
   "scripts": {
@@ -8,6 +8,9 @@
     "test": "gulp jshint"
   },
   "author": "https://github.com/brozeph",
+  "contributors": [
+    "https://github.com/pronskiy"
+  ],
   "license": "MIT",
   "keywords": [
     "socks",

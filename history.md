@@ -1,3 +1,7 @@
+# v0.2.5 - 2016/12/02
+
+* Added ability to run multiple instances of the server at once (thank you to @pronskiy)
+
 # v0.2.4 - 2015/04/09
 
 * Ensuring any errors that emit from the underlying socket are surfaced to the proxy server
