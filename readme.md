@@ -2,6 +2,8 @@
 
 Creates a simple SOCKS5 server and exposes additional SOCKS5 proxy events.
 
+[![Build Status](https://travis-ci.org/brozeph/simple-socks.svg?branch=master)](https://travis-ci.org/brozeph/simple-socks)
+
 ## Installation
 
 ```
@@ -134,6 +136,26 @@ The socks5 server supports all events that exist on a native [net.Server](http:/
 * [proxyError](#proxyerror) - If connection to the remote destination fails, this event is emitted
 * [proxyData](#proxydata) - When data is recieved from the remote destination, this event is fired
 * [proxyEnd](#proxyend) - This event is emitted when the SOCKS5 client connection is closed for any reason
+
+**Note:**
+
+This module exports the above events as constants for convenience purposes via the property `events`:
+
+```javascript
+console.log(socks5.events);
+```
+
+Outputs the following:
+
+```javascript
+{ AUTHENTICATION: 'authenticate',
+  AUTHENTICATION_ERROR: 'authenticateError',
+  HANDSHAKE: 'handshake',
+  PROXY_CONNECT: 'proxyConnect',
+  PROXY_DATA: 'proxyData',
+  PROXY_END: 'proxyEnd',
+  PROXY_ERROR: 'proxyError' }
+```
 
 ### handshake
 
