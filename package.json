@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "proxies requests ",
   "main": "lib",
   "scripts": {
@@ -9,7 +9,8 @@
   },
   "author": "https://github.com/brozeph",
   "contributors": [
-    "https://github.com/pronskiy"
+    "https://github.com/pronskiy",
+    "https://github.com/fabiensk"
   ],
   "license": "MIT",
   "keywords": [
