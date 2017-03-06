@@ -1,3 +1,7 @@
+# v0.2.6 - 2017/03/06
+
+* Fixed issue in support for ipv6 (thanks to @fabiensk)
+
 # v0.2.5 - 2016/12/02
 
 * Added ability to run multiple instances of the server at once (thank you to @pronskiy)
