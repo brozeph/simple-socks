@@ -1,3 +1,6 @@
+# v0.2.7 - 2017/05/15
+* Added support bind on interface (options.interface)
+
 # v0.2.6 - 2017/03/06
 
 * Fixed issue in support for ipv6 (thanks to @fabiensk)
