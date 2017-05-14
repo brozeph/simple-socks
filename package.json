@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "proxies requests ",
   "main": "lib",
   "scripts": {
@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "binary": "^0.3.0",
+    "ffi": "^2.2.0",
     "put": "0.0.6"
   },
   "devDependencies": {
