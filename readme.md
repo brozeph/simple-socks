@@ -95,6 +95,20 @@ server.listen(1080, '0.0.0.0', function () {
 This method accepts an optional `options` argument:
 
 * `options.authentication` - A callback for authentication
+* `options.interface` - Binding to interface
+
+```javascript
+var socks5 = require('simple-socks');
+
+var options = {
+	interface: 'eth0'
+};
+
+var server = socks5.createServer(options);
+
+// begin listening and require user/pass authentication
+server.listen(1080);
+```
 
 #### authentication
 
@@ -104,6 +118,7 @@ To make the socks5 server require username/password authentication, supply a fun
 var socks5 = require('simple-socks');
 
 var options = {
+	interface: 'eth0',
 	authenticate : function (username, password, callback) {
 		if (username === 'foo' && password === 'bar') {
 			return setImmediate(callback);
