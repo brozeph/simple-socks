@@ -106,8 +106,8 @@ var options = {
 
 var server = socks5.createServer(options);
 
-// begin listening and require user/pass authentication
-server.listen(1080);
+// begin listening on all interfaces
+server.listen(1080, '0.0.0.0');
 ```
 
 #### authentication
