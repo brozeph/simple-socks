@@ -1,5 +1,39 @@
-language: node_js
-node_js:
-    - 4
-    - 6
-    - 7
+language: cpp
+
+os:
+  - linux
+  - osx
+
+env:
+ matrix:
+  - TRAVIS_NODE_VERSION="7"
+  - TRAVIS_NODE_VERSION="6"
+  - TRAVIS_NODE_VERSION="5"
+  - TRAVIS_NODE_VERSION="4"
+
+sudo: required
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.8
+
+script:
+  - >
+    sudo -E bash -c 'rm -rf ~/.nvm
+    && git clone https://github.com/creationix/nvm.git ~/.nvm
+    && (cd ~/.nvm && git checkout $(git describe --abbrev=0 --tags))
+    && . ~/.nvm/nvm.sh
+    && nvm install $TRAVIS_NODE_VERSION
+    && if [[ $TRAVIS_OS_NAME == "linux" ]]; then export CXX=g++-4.8; fi
+    && $CXX --version
+    && export PATH="$(npm bin):$(npm bin -g):$PATH"
+    && if [[ "$(node --version)" =~ ^v0\.8\. ]]; then npm install -g npm@1.4.28 ; fi
+    && npm install
+    && node --version
+    && npm --version
+    && npm test'
+after_success:
+  - sudo -E bash <(curl -s https://codecov.io/bash)
