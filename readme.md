@@ -118,7 +118,6 @@ To make the socks5 server require username/password authentication, supply a fun
 var socks5 = require('simple-socks');
 
 var options = {
-	interface: 'eth0',
 	authenticate : function (username, password, callback) {
 		if (username === 'foo' && password === 'bar') {
 			return setImmediate(callback);
