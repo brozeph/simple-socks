@@ -1,3 +1,7 @@
+# v0.2.8 - 2017/07/05
+
+* ECMA 6 styled code. Push const to separate file
+
 # v0.2.7 - 2017/06/16
 
 * Returning `socket` to the authentication callback based on pull-request from @dgramop
