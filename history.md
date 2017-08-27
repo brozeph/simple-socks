@@ -1,5 +1,10 @@
-# v0.2.7 - 2017/05/15
-* Added support bind on interface (options.interface)
+# v0.2.8 - 2017/08/27
+
+* Added support bind on interface (options.interface) (PR 2017/05/15)
+
+# v0.2.7 - 2017/06/16
+
+* Returning `socket` to the authentication callback based on pull-request from @dgramop
 
 # v0.2.6 - 2017/03/06
 
