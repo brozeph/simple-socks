@@ -130,12 +130,12 @@ The authenticate callback accepts three arguments:
 Allows you to filter incoming connections, based on destination, return `false` to disallow:
 
 ```javascript
-	server = socks5.createServer({
-        allow_connection : function (addr, port) {
-			console.log('Not allowing to ' + addr);
-            return false;
-        }
-	});
+server = socks5.createServer({
+    allow_connection : function (addr, port) {
+        console.log('Not allowing to ' + addr);
+        return false;
+    }
+});
 ```
 
 ## Events
