@@ -125,7 +125,7 @@ The authenticate callback accepts three arguments:
 * password - password of the proxy user
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
-## allow_connection
+#### allow_connection
 
 Allows you to filter incoming connections, based on destination, return `false` to disallow:
 
