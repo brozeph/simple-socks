@@ -138,6 +138,8 @@ server = socks5.createServer({
 });
 ```
 
+(see `examples/createServerAllowConnection.js`)
+
 ## Events
 
 The socks5 server supports all events that exist on a native [net.Server](http://nodejs.org/api/net.html#net_class_net_server) object. Additionally, the following events have been added that are specific to the SOCKS5 proxy:
