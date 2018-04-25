@@ -188,7 +188,8 @@ Outputs the following:
 
 ```javascript
 { AUTHENTICATION: 'authenticate',
-  AUTHENTICATION_ERROR: 'authenticateError',
+	AUTHENTICATION_ERROR: 'authenticateError',
+	CONNECTION_FILTER: 'connectionFilter',
   HANDSHAKE: 'handshake',
   PROXY_CONNECT: 'proxyConnect',
   PROXY_DATA: 'proxyData',
