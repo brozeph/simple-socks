@@ -1,6 +1,10 @@
+# v0.2.8 - 2018/04/25
+
+* Added `connectionFilter` option to provide ability to filter destination addresses (thanks to @slava-vishnyakov for implementation and @jfowl for review and advice)
+
 # v0.2.7 - 2017/06/16
 
-* Returning `socket` to the authentication callback based on pull-request from @dgramop
+* Modifed the authentication callback to return a `socket` based on pull-request from @dgramop
 
 # v0.2.6 - 2017/03/06
 

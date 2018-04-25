@@ -78,6 +78,21 @@ In a separate terminal window:
 curl http://www.google.com --socks5 127.0.0.1:1080 --proxy-user foo:bar
 ```
 
+#### Connection Filter
+
+For a SOCKS5 server that performs destination address filtering, look at [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js):
+
+```bash
+node examples/createServerConnectionFilter
+```
+
+In a separate terminal window:
+
+```bash
+curl http://www.google.com --socks5 127.0.0.1:1080 # allowed
+curl http://www.fandango.com --socks5 127.0.0.1:1080 # denied
+```
+
 ## Methods
 
 ### createServer
@@ -95,6 +110,7 @@ server.listen(1080, '0.0.0.0', function () {
 This method accepts an optional `options` argument:
 
 * `options.authentication` - A callback for authentication
+* `options.connectionFilter` - A callback for connection filtering
 
 #### authentication
 
@@ -119,26 +135,33 @@ var server = socks5.createServer(options);
 server.listen(1080);
 ```
 
-The authenticate callback accepts three arguments:
+The `authenticate` callback accepts three arguments:
 
 * username - username of the proxy user
 * password - password of the proxy user
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
-#### allow_connection
+#### connectionFilter
 
 Allows you to filter incoming connections, based on destination, return `false` to disallow:
 
 ```javascript
 server = socks5.createServer({
-    allow_connection : function (addr, port) {
-        console.log('Not allowing to ' + addr);
-        return false;
-    }
+		connectionFilter : function (port, address, callback) {
+				console.log('denying access to %s:%s', address, port);
+
+				return setImmediate(callback, new Error('access to specified destination is denied'));
+		}
 });
 ```
 
-(see `examples/createServerAllowConnection.js`)
+The `connectionFilter` callback accepts three arguments:
+
+* port - the destination address of the connection
+* address - the destination port of the connection
+* callback - callback for destination address validation... if connections are allowed to the destination address, the callback should be called with no arguments
+
+For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
 
 ## Events
 
@@ -147,6 +170,7 @@ The socks5 server supports all events that exist on a native [net.Server](http:/
 * [handshake](#handshake) - The first event fired and it occurs when a new SOCKS5 client proxy negotiation occurs
 * [authenticate](#authenticate) - When username/password authentication is configured (see above), this event is fired when a successful authentication occurs
 * [authenticateError](#authenticateerror) - When username/password authentication is configured, this event is fired when authentication fails
+* [connectionFilter](#connectionfilter) - When a destination address is denied by the configured connection filter callback, this event is fired
 * [proxyConnect](#proxyconnect) - After handshake and optional authentication, this event is emitted upon successful connection with the remote destination
 * [proxyError](#proxyerror) - If connection to the remote destination fails, this event is emitted
 * [proxyData](#proxydata) - When data is recieved from the remote destination, this event is fired
@@ -209,6 +233,22 @@ This event is emitted when authentication is not successful. The callback accept
 // When authentication fails
 server.on('authenticateError', function (username, err) {
 	console.log('user %s failed to authenticate...', username);
+	console.error(err);
+});
+```
+
+### connectionFilter
+
+This event is emitted when a destination address and port is filtered by the `connectionFilter` callback. The callback accepts the following arguments:
+
+* port - the destination port
+* address - the destination address
+* err - the error returned to the `options.connectionFilter` callback
+
+```javascript
+// When a destination connection is filtered
+server.on('connectionFilter', function (port, address, err) {
+	console.log('connection to %s:%s has been denied', address, port);
 	console.error(err);
 });
 ```
