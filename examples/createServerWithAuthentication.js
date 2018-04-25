@@ -3,7 +3,7 @@
 var
 	socks5 = require('../lib'),
 	server = socks5.createServer({
-		authenticate : function (username, password, callback) {
+		authenticate : function (username, password, socket, callback) {
 			// verify username/password
 			if (username !== 'foo' || password !== 'bar') {
 				// respond with auth failure (can be any error)

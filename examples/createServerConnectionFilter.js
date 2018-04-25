@@ -1,16 +1,20 @@
 'use strict';
 
 var
+	dns = require('dns'),
 	socks5 = require('../lib'),
 	server = socks5.createServer({
-		connectionFilter : function (port, address, callback) {
-			if (!/^172\.217\./.test(address)) { // google.com IP space (at time of writing this...)
-				console.log('Not allowing connection to %s:%s', address, port);
+		connectionFilter : function (port, address, socket, callback) {
+			return dns.reverse(address, function (err, hostnames) {
+				if (!hostnames.length || !/amazonaws/.test(hostnames[0])) {
+					console.log('Not allowing connection to %s:%s', address, port);
 
-				return setImmediate(callback, new Error('connection to destination address is denied'));
-			}
+					return callback(new Error('connection to destination address is denied'));
+				}
 
-			return setImmediate(callback);
+				return callback();
+			});
+
 		}
 	});
 

@@ -89,8 +89,8 @@ node examples/createServerConnectionFilter
 In a separate terminal window:
 
 ```bash
-curl http://www.google.com --socks5 127.0.0.1:1080 # allowed
-curl http://www.fandango.com --socks5 127.0.0.1:1080 # denied
+curl http://www.us.gov --socks5 127.0.0.1:1080 # allowed
+curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 ```
 
 ## Methods
@@ -120,7 +120,7 @@ To make the socks5 server require username/password authentication, supply a fun
 var socks5 = require('simple-socks');
 
 var options = {
-  authenticate : function (username, password, callback) {
+  authenticate : function (username, password, socket, callback) {
     if (username === 'foo' && password === 'bar') {
       return setImmediate(callback);
     }
@@ -139,6 +139,7 @@ The `authenticate` callback accepts three arguments:
 
 * username - username of the proxy user
 * password - password of the proxy user
+* socket - the socket for the client connection
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
 #### connectionFilter
@@ -147,7 +148,7 @@ Allows you to filter incoming connections, based on destination, return `false` 
 
 ```javascript
 server = socks5.createServer({
-  connectionFilter : function (port, address, callback) {
+  connectionFilter : function (port, address, socket, callback) {
     console.log('denying access to %s:%s', address, port);
 
     return setImmediate(callback, new Error('access to specified destination is denied'));
@@ -159,6 +160,7 @@ The `connectionFilter` callback accepts three arguments:
 
 * port - the destination address of the connection
 * address - the destination port of the connection
+* socket - the socket for the client connection
 * callback - callback for destination address validation... if connections are allowed to the destination address, the callback should be called with no arguments
 
 For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
