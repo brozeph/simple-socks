@@ -125,6 +125,21 @@ The authenticate callback accepts three arguments:
 * password - password of the proxy user
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
+#### allow_connection
+
+Allows you to filter incoming connections, based on destination, return `false` to disallow:
+
+```javascript
+server = socks5.createServer({
+    allow_connection : function (addr, port) {
+        console.log('Not allowing to ' + addr);
+        return false;
+    }
+});
+```
+
+(see `examples/createServerAllowConnection.js`)
+
 ## Events
 
 The socks5 server supports all events that exist on a native [net.Server](http://nodejs.org/api/net.html#net_class_net_server) object. Additionally, the following events have been added that are specific to the SOCKS5 proxy:
