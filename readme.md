@@ -147,11 +147,11 @@ Allows you to filter incoming connections, based on destination, return `false` 
 
 ```javascript
 server = socks5.createServer({
-		connectionFilter : function (port, address, callback) {
-				console.log('denying access to %s:%s', address, port);
+  connectionFilter : function (port, address, callback) {
+    console.log('denying access to %s:%s', address, port);
 
-				return setImmediate(callback, new Error('access to specified destination is denied'));
-		}
+    return setImmediate(callback, new Error('access to specified destination is denied'));
+  }
 });
 ```
 
