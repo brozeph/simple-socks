@@ -1,4 +1,4 @@
-# v0.2.8 - 2018/04/25
+# v0.3.0 - 2018/04/25
 
 * Added `connectionFilter` option to provide ability to filter destination addresses (thanks to @slava-vishnyakov for implementation and @jfowl for review and advice)
 
