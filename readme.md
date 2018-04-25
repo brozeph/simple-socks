@@ -18,33 +18,33 @@ In the [examples](examples/) folder exists two examples, one that requires no au
 'use strict';
 
 var
-	socks5 = require('simple-socks'),
-	server = socks5.createServer().listen(1080);
+  socks5 = require('simple-socks'),
+  server = socks5.createServer().listen(1080);
 
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', function (info, destination) {
-	console.log('connected to remote server at %s:%d', info.host, info.port);
+  console.log('connected to remote server at %s:%d', info.host, info.port);
 
-	destination.on('data', function (data) {
-		console.log(data.length);
-	});
+  destination.on('data', function (data) {
+    console.log(data.length);
+  });
 });
 
 // When data arrives from the remote connection
 server.on('proxyData', function (data) {
-	console.log(data.length);
+  console.log(data.length);
 });
 
 // When an error occurs connecting to remote destination
 server.on('proxyError', function (err) {
-	console.error('unable to connect to remote server');
-	console.error(err);
+  console.error('unable to connect to remote server');
+  console.error(err);
 });
 
 // When a proxy connection ends
 server.on('proxyEnd', function (response, args) {
-	console.log('socket closed with code %d', response);
-	console.log(args);
+  console.log('socket closed with code %d', response);
+  console.log(args);
 });
 ```
 
@@ -78,6 +78,21 @@ In a separate terminal window:
 curl http://www.google.com --socks5 127.0.0.1:1080 --proxy-user foo:bar
 ```
 
+#### Connection Filter
+
+For a SOCKS5 server that performs destination address filtering, look at [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js):
+
+```bash
+node examples/createServerConnectionFilter
+```
+
+In a separate terminal window:
+
+```bash
+curl http://www.google.com --socks5 127.0.0.1:1080 # allowed
+curl http://www.fandango.com --socks5 127.0.0.1:1080 # denied
+```
+
 ## Methods
 
 ### createServer
@@ -88,13 +103,14 @@ Creates an instances of a SOCKS5 proxy server:
 var server = require('simple-socks').createServer();
 
 server.listen(1080, '0.0.0.0', function () {
-	console.log('SOCKS5 proxy server started on 0.0.0.0:1080');
+  console.log('SOCKS5 proxy server started on 0.0.0.0:1080');
 });
 ```
 
 This method accepts an optional `options` argument:
 
 * `options.authentication` - A callback for authentication
+* `options.connectionFilter` - A callback for connection filtering
 
 #### authentication
 
@@ -104,13 +120,13 @@ To make the socks5 server require username/password authentication, supply a fun
 var socks5 = require('simple-socks');
 
 var options = {
-	authenticate : function (username, password, callback) {
-		if (username === 'foo' && password === 'bar') {
-			return setImmediate(callback);
-		}
+  authenticate : function (username, password, callback) {
+    if (username === 'foo' && password === 'bar') {
+      return setImmediate(callback);
+    }
 
-		return setImmediate(callback, new Error('incorrect username and password'));
-	}
+    return setImmediate(callback, new Error('incorrect username and password'));
+  }
 };
 
 var server = socks5.createServer(options);
@@ -119,26 +135,33 @@ var server = socks5.createServer(options);
 server.listen(1080);
 ```
 
-The authenticate callback accepts three arguments:
+The `authenticate` callback accepts three arguments:
 
 * username - username of the proxy user
 * password - password of the proxy user
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
-#### allow_connection
+#### connectionFilter
 
 Allows you to filter incoming connections, based on destination, return `false` to disallow:
 
 ```javascript
 server = socks5.createServer({
-    allow_connection : function (addr, port) {
-        console.log('Not allowing to ' + addr);
-        return false;
-    }
+  connectionFilter : function (port, address, callback) {
+    console.log('denying access to %s:%s', address, port);
+
+    return setImmediate(callback, new Error('access to specified destination is denied'));
+  }
 });
 ```
 
-(see `examples/createServerAllowConnection.js`)
+The `connectionFilter` callback accepts three arguments:
+
+* port - the destination address of the connection
+* address - the destination port of the connection
+* callback - callback for destination address validation... if connections are allowed to the destination address, the callback should be called with no arguments
+
+For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
 
 ## Events
 
@@ -147,6 +170,7 @@ The socks5 server supports all events that exist on a native [net.Server](http:/
 * [handshake](#handshake) - The first event fired and it occurs when a new SOCKS5 client proxy negotiation occurs
 * [authenticate](#authenticate) - When username/password authentication is configured (see above), this event is fired when a successful authentication occurs
 * [authenticateError](#authenticateerror) - When username/password authentication is configured, this event is fired when authentication fails
+* [connectionFilter](#connectionfilter) - When a destination address is denied by the configured connection filter callback, this event is fired
 * [proxyConnect](#proxyconnect) - After handshake and optional authentication, this event is emitted upon successful connection with the remote destination
 * [proxyError](#proxyerror) - If connection to the remote destination fails, this event is emitted
 * [proxyData](#proxydata) - When data is recieved from the remote destination, this event is fired
@@ -164,7 +188,8 @@ Outputs the following:
 
 ```javascript
 { AUTHENTICATION: 'authenticate',
-  AUTHENTICATION_ERROR: 'authenticateError',
+	AUTHENTICATION_ERROR: 'authenticateError',
+	CONNECTION_FILTER: 'connectionFilter',
   HANDSHAKE: 'handshake',
   PROXY_CONNECT: 'proxyConnect',
   PROXY_DATA: 'proxyData',
@@ -181,7 +206,7 @@ This is event is emitted when a socks5 client connects to the server. The callba
 ```javascript
 // When a new request is initiated
 server.on('handshake', function (socket) {
-	console.log('new socks5 client from %s:%d', socket.remoteAddress, socket.remotePort);
+  console.log('new socks5 client from %s:%d', socket.remoteAddress, socket.remotePort);
 });
 ```
 
@@ -194,7 +219,7 @@ This event is emitted when successful authentication occurs. The callback accept
 ```javascript
 // When authentication succeeds
 server.on('authenticate', function (username) {
-	console.log('user %s successfully authenticated!', username);
+  console.log('user %s successfully authenticated!', username);
 });
 ```
 
@@ -208,8 +233,24 @@ This event is emitted when authentication is not successful. The callback accept
 ```javascript
 // When authentication fails
 server.on('authenticateError', function (username, err) {
-	console.log('user %s failed to authenticate...', username);
-	console.error(err);
+  console.log('user %s failed to authenticate...', username);
+  console.error(err);
+});
+```
+
+### connectionFilter
+
+This event is emitted when a destination address and port is filtered by the `connectionFilter` callback. The callback accepts the following arguments:
+
+* port - the destination port
+* address - the destination address
+* err - the error returned to the `options.connectionFilter` callback
+
+```javascript
+// When a destination connection is filtered
+server.on('connectionFilter', function (port, address, err) {
+  console.log('connection to %s:%s has been denied', address, port);
+  console.error(err);
 });
 ```
 
@@ -225,7 +266,7 @@ This event is emitted each time a connection is requested to a remote destinatio
 ```javascript
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', function (info, destination) {
-	console.log('connected to remote server at %s:%d', info.host, info.port);
+  console.log('connected to remote server at %s:%d', info.host, info.port);
 });
 ```
 
@@ -236,7 +277,7 @@ This event is emitted each time a remote connection returns data:
 ```javascript
 // When a reqest arrives for a remote destination
 server.on('proxyData', function (data) {
-	console.log('data received from remote destination: %d', data.length);
+  console.log('data received from remote destination: %d', data.length);
 });
 ```
 
@@ -245,9 +286,9 @@ server.on('proxyData', function (data) {
 ```javascript
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', function (info, destination) {
-	destination.on('data', function (data) {
-		console.log('data received from remote destination: %d', data.length);
-	});
+  destination.on('data', function (data) {
+    console.log('data received from remote destination: %d', data.length);
+  });
 });
 ```
 
@@ -258,8 +299,8 @@ In the event that a network error occurs attempting to create communication with
 ```javascript
 // When an error occurs connecting to remote destination
 server.on('proxyError', function (err) {
-	console.error('unable to connect to remote server');
-	console.error(err);
+  console.error('unable to connect to remote server');
+  console.error(err);
 });
 ```
 
@@ -278,7 +319,7 @@ When a socket connection is closed by the server, the `proxyEnd` event is emitte
 ```javascript
 // When a proxy connection ends
 server.on('proxyEnd', function (response, args) {
-	console.log('socket closed with code %d', response);
-	console.log(args);
+  console.log('socket closed with code %d', response);
+  console.log(args);
 });
 ```
