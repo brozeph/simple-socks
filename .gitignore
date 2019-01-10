@@ -1,11 +1,7 @@
-# OS generated files #
-######################
 .DS_Store
-
-# Everything else    #
-######################
+.nyc_output
+dist
+npm-debug.log
+lib-cov
 node_modules
 reports
-*.esproj
-*.esproj?
-*.csr

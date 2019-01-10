@@ -1,8 +1,6 @@
-'use strict';
-
-var
+const
 	dns = require('dns'),
-	socks5 = require('../lib'),
+	socks5 = require('../dist/socks5'),
 	server = socks5.createServer({
 		connectionFilter : function (port, address, socket, callback) {
 			return dns.reverse(address, function (err, hostnames) {

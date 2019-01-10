@@ -1,7 +1,5 @@
-'use strict';
-
-var
-	socks5 = require('../lib'),
+const
+	socks5 = require('../dist/socks5'),
 	server = socks5.createServer({
 		authenticate : function (username, password, socket, callback) {
 			// verify username/password

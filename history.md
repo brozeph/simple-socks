@@ -1,3 +1,9 @@
+# v1.0.0 - 2019/01/10
+
+* Refactored code
+* Added babel for transpile
+* Fixed `(node:17070) [DEP0005] DeprecationWarning: Buffer() is deprecated` warning at runtime
+
 # v0.3.0 - 2018/04/25
 
 * Added `connectionFilter` option to provide ability to filter destination addresses (thanks to @slava-vishnyakov for implementation and @jfowl for review and advice)
