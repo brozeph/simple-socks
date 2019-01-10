@@ -1,6 +1,5 @@
 # v1.0.0 - 2019/01/10
 
-* Refactored code
 * Added babel for transpile
 * Fixed `(node:17070) [DEP0005] DeprecationWarning: Buffer() is deprecated` warning at runtime
 
