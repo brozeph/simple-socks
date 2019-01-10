@@ -3,6 +3,8 @@
 * Added babel for transpile
 * Fixed `(node:17070) [DEP0005] DeprecationWarning: Buffer() is deprecated` warning at runtime
 * Moved to eslint instead of jshint
+* Refactored constants for cleaner code
+* Updated node.js dependencies for Travis-CI
 
 # v0.3.0 - 2018/04/25
 
