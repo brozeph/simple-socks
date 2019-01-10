@@ -2,6 +2,7 @@
 
 * Added babel for transpile
 * Fixed `(node:17070) [DEP0005] DeprecationWarning: Buffer() is deprecated` warning at runtime
+* Moved to eslint instead of jshint
 
 # v0.3.0 - 2018/04/25
 

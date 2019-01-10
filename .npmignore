@@ -46,6 +46,5 @@ Thumbs.db
 .vscode
 gulpfile.babel.js
 lib-cov
-node-chess.tmproj #textmate project file
 node_modules
 reports
