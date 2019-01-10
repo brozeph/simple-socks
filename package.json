@@ -7,9 +7,9 @@
     "lint": "gulp lint",
     "prepare": "gulp build",
     "prepublish": "check-node-version --npm \">=4\" || npm run prepare",
-    "pretest": "gulp clean && gulp lint",
-    "test": "nyc mocha ./test/src",
-    "posttest": "nyc report --reporter=text-lcov | coveralls"
+    "pretest": "gulp clean",
+    "test": "gulp lint",
+    "posttest": "gulp build"
   },
   "author": "https://github.com/brozeph",
   "contributors": [
