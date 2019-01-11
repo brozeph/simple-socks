@@ -15,9 +15,7 @@ npm install simple-socks
 In the [examples](examples/) folder exists two examples, one that requires no authentication and one that requires username/password authentication. Below is a basic no authentication example:
 
 ```javascript
-'use strict';
-
-var
+const
   socks5 = require('simple-socks'),
   server = socks5.createServer().listen(1080);
 
@@ -100,7 +98,7 @@ curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 Creates an instances of a SOCKS5 proxy server:
 
 ```javascript
-var server = require('simple-socks').createServer();
+const server = require('simple-socks').createServer();
 
 server.listen(1080, '0.0.0.0', function () {
   console.log('SOCKS5 proxy server started on 0.0.0.0:1080');
@@ -117,9 +115,9 @@ This method accepts an optional `options` argument:
 To make the socks5 server require username/password authentication, supply a function callback in the options as follows:
 
 ```javascript
-var socks5 = require('simple-socks');
+const socks5 = require('simple-socks');
 
-var options = {
+const options = {
   authenticate : function (username, password, socket, callback) {
     if (username === 'foo' && password === 'bar') {
       return setImmediate(callback);
@@ -129,7 +127,7 @@ var options = {
   }
 };
 
-var server = socks5.createServer(options);
+const server = socks5.createServer(options);
 
 // begin listening and require user/pass authentication
 server.listen(1080);
