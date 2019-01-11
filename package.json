@@ -1,9 +1,10 @@
 {
   "name": "simple-socks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "proxies requests ",
   "main": "dist/socks5.js",
   "scripts": {
+    "build": "gulp build",
     "lint": "gulp lint",
     "prepare": "gulp build",
     "prepublish": "check-node-version --npm \">=4\" || npm run prepare",

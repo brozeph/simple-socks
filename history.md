@@ -1,3 +1,7 @@
+# v1.0.1 - 2019/01/11
+
+* Tightened up the `.eslintrc.yml` file for a few additional tests
+
 # v1.0.0 - 2019/01/10
 
 * Added babel for transpile
