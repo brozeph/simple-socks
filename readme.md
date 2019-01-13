@@ -12,7 +12,7 @@ npm install simple-socks
 
 ## Example Usage
 
-In the [examples](examples/) folder exists two examples, one that requires no authentication and one that requires username/password authentication. Below is a basic no authentication example:
+In the [examples](examples/) folder exists two examples, one that requires no authentication and one that requires username/password authentication. Below is an example with no authentication:
 
 ```javascript
 const
@@ -95,7 +95,7 @@ curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 
 ### createServer
 
-Creates an instances of a SOCKS5 proxy server:
+Factory method that creates an instance of a SOCKS5 proxy server:
 
 ```javascript
 const server = require('simple-socks').createServer();
@@ -188,8 +188,8 @@ Outputs the following:
 
 ```javascript
 { AUTHENTICATION: 'authenticate',
-	AUTHENTICATION_ERROR: 'authenticateError',
-	CONNECTION_FILTER: 'connectionFilter',
+  AUTHENTICATION_ERROR: 'authenticateError',
+  CONNECTION_FILTER: 'connectionFilter',
   HANDSHAKE: 'handshake',
   PROXY_CONNECT: 'proxyConnect',
   PROXY_DATA: 'proxyData',
@@ -259,8 +259,8 @@ server.on('connectionFilter', function (port, address, err) {
 This event is emitted each time a connection is requested to a remote destination. The callback accepts two arguments:
 
 * info - object with two fields
-	* host - the TCP address of the remote server
-	* port - the TCP port of the remote server
+  * host - the TCP address of the remote server
+  * port - the TCP port of the remote server
 * destination - the destination TCP [net.Socket](http://nodejs.org/api/net.html#net_class_net_socket)
 
 ```javascript
@@ -310,11 +310,11 @@ When a socket connection is closed by the server, the `proxyEnd` event is emitte
 
 * response - the specific [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) documented response code
 * args - [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) fields for the proxy request including
-	* `ver`
-	* `cmd`
-	* `atype`
-	* `dst.addr`
-	* `dst.port`
+  * `ver`
+  * `cmd`
+  * `atype`
+  * `dst.addr`
+  * `dst.port`
 
 ```javascript
 // When a proxy connection ends
