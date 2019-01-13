@@ -176,9 +176,9 @@ class SocksServer {
 
 										// convert DWORD to two WORD values and append
 										/* eslint no-magic-numbers : 0 */
-										binaryStream.push(((x & 0xffff0000) >> 16).toString(16));
-										binaryStream.push(((x & 0xffff)).toString(16));
-									}, args.dst.addr);
+										args.dst.addr.push(((x & 0xffff0000) >> 16).toString(16));
+										args.dst.addr.push(((x & 0xffff)).toString(16));
+									});
 
 									// format ipv6 address as string
 									args.dst.addr = args.dst.addr.join(':');

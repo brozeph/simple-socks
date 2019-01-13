@@ -1,3 +1,7 @@
+# v1.0.2 - 2019/01/12
+
+* Fixed issue where IPv6 clients were failing
+
 # v1.0.1 - 2019/01/11
 
 * Tightened up the `.eslintrc.yml` file for a few additional tests
