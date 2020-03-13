@@ -1,3 +1,7 @@
+# v2.0.0 - 2020/03/11
+
+* Changed functionality for `connectionFilter` so that both the origin and the destination can be filtered
+
 # v1.0.4 - 2020/03/11
 
 * Updated dependencies
