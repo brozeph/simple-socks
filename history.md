@@ -1,3 +1,7 @@
+# v2.0.1 - 2020/03/12
+
+* Removed `put` from `package.json`
+
 # v2.0.0 - 2020/03/11
 
 * Changed functionality for `connectionFilter` so that both the origin and the destination can be filtered
