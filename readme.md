@@ -21,7 +21,7 @@ const
 
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', function (info, destination) {
-  console.log('connected to remote server at %s:%d', info.host, info.port);
+  console.log('connected to remote server at %s:%d', info.address, info.port);
 
   destination.on('data', function (data) {
     console.log(data.length);
@@ -78,7 +78,7 @@ curl http://www.google.com --socks5 127.0.0.1:1080 --proxy-user foo:bar
 
 #### Connection Filter
 
-For a SOCKS5 server that performs destination address filtering, look at [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js):
+For a SOCKS5 server that can perform either origin or destination (or both!) address filtering, look at [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js):
 
 ```bash
 node examples/createServerConnectionFilter
@@ -142,24 +142,37 @@ The `authenticate` callback accepts three arguments:
 
 #### connectionFilter
 
-Allows you to filter incoming connections, based on destination, return `false` to disallow:
+Allows you to filter incoming connections, based on either origin and/or destination, return `false` to disallow:
 
 ```javascript
 server = socks5.createServer({
-  connectionFilter : function (port, address, socket, callback) {
-    console.log('denying access to %s:%s', address, port);
+  connectionFilter : function (destination, origin, callback) {
+    if (origin.address === '127.0.0.1') {
+      console.log('denying access from %s:%s', origin.address, origin.port);
 
-    return setImmediate(callback, new Error('access to specified destination is denied'));
+      return setImmediate(callback, new Error('access from specified origin is denied'));
+    }
+
+    if (destination.address === '10.0.0.1') {
+      console.log('denying access to %s:%s', remote.address, remote.port);
+
+      return setImmediate(callback, new Error('access to specified destination is denied'));
+    }
+
+    return setImmediate(callback);
   }
 });
 ```
 
 The `connectionFilter` callback accepts three arguments:
 
-* port - the destination address of the connection
-* address - the destination port of the connection
-* socket - the socket for the client connection
-* callback - callback for destination address validation... if connections are allowed to the destination address, the callback should be called with no arguments
+* destination - an information object containing details for destination connection
+  * address - the TCP address of the remote server
+  * port - the TCP port of the remote server
+* origin - an information object containing details for origin connection
+  * address - the TCP address of the origin (client) connection
+  * port - the TCP port of the origin (client) connection
+* callback - callback for destination and/or origin address validation... if connections are allowed to the destination address, the callback should be called with no arguments
 
 For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
 
@@ -242,8 +255,12 @@ server.on('authenticateError', function (username, err) {
 
 This event is emitted when a destination address and port is filtered by the `connectionFilter` callback. The callback accepts the following arguments:
 
-* port - the destination port
-* address - the destination address
+* destination - an information object containing details for destination connection
+  * address - the TCP address of the remote server
+  * port - the TCP port of the remote server
+* origin - an information object containing details for origin connection
+  * address - the TCP address of the origin (client) connection
+  * port - the TCP port of the origin (client) connection
 * err - the error returned to the `options.connectionFilter` callback
 
 ```javascript
@@ -259,14 +276,14 @@ server.on('connectionFilter', function (port, address, err) {
 This event is emitted each time a connection is requested to a remote destination. The callback accepts two arguments:
 
 * info - object with two fields
-  * host - the TCP address of the remote server
+  * address - the TCP address of the remote server
   * port - the TCP port of the remote server
 * destination - the destination TCP [net.Socket](http://nodejs.org/api/net.html#net_class_net_socket)
 
 ```javascript
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', function (info, destination) {
-  console.log('connected to remote server at %s:%d', info.host, info.port);
+  console.log('connected to remote server at %s:%d', info.address, info.port);
 });
 ```
 

@@ -13,7 +13,7 @@ server.on('handshake', function (socket) {
 
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', function (info, destination) {
-	console.log('connected to remote server at %s:%d', info.host, info.port);
+	console.log('connected to remote server at %s:%d', info.address, info.port);
 
 	destination.on('data', function (data) {
 		console.log(data.length);
