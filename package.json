@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "proxies requests ",
   "main": "dist/socks5.js",
   "scripts": {
