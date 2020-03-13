@@ -11,7 +11,6 @@ import {
 import binary from 'binary';
 import domain from 'domain';
 import net from 'net';
-import put from 'put';
 
 	// module specific events
 const
@@ -96,10 +95,9 @@ class SocksServer {
 								self.server.emit(EVENTS.AUTHENTICATION, args.uname.toString());
 
 								// respond with success...
-								let responseBuffer = put()
-									.word8(RFC_1929_VERSION)
-									.word8(RFC_1929_REPLIES.SUCCEEDED)
-									.buffer();
+								let responseBuffer = Buffer.allocUnsafe(2);
+								responseBuffer[0] = RFC_1929_VERSION;
+								responseBuffer[1] = RFC_1929_REPLIES.SUCCEEDED;
 
 								// respond then listen for cmd and dst info
 								socket.write(responseBuffer, () => {
@@ -313,12 +311,12 @@ class SocksServer {
 			 **/
 			function end (response, args) {
 				// either use the raw buffer (if available) or create a new one
-				let responseBuffer = args.requestBuffer || put()
-					.word8(RFC_1928_VERSION)
-					.word8(response)
-					.buffer();
+				let responseBuffer = args.requestBuffer || Buffer.allocUnsafe(2);
 
-				// set the response as appropriate
+				if (!args.requestBuffer) {
+					responseBuffer[0] = (RFC_1928_VERSION);
+				}
+
 				responseBuffer[1] = response;
 
 				// respond then end the connection
@@ -365,10 +363,11 @@ class SocksServer {
 							noAuth = !basicAuth &&
 								typeof acceptedMethods[0] !== 'undefined' &&
 								acceptedMethods[0],
-							responseBuffer = put()
-								.word8(RFC_1928_VERSION)
-								.word8(RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED)
-								.buffer();
+							responseBuffer = Buffer.allocUnsafe(2);
+
+						// form response Buffer
+						responseBuffer[0] = RFC_1928_VERSION;
+						responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 
 						// check for basic auth configuration
 						if (basicAuth) {

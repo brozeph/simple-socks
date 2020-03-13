@@ -1,6 +1,8 @@
 # v2.0.0 - 2020/03/11
 
 * Changed functionality for `connectionFilter` so that both the origin and the destination can be filtered
+* Moved to `@babel/cli` from `babel-cli` as a dev-dependency
+* Removed dependency on `put` and replaced with native `Buffer`
 
 # v1.0.4 - 2020/03/11
 
