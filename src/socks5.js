@@ -198,7 +198,7 @@ class SocksServer {
 
 							// if no connection filter is provided, stub one
 							if (!connectionFilter || typeof connectionFilter !== 'function') {
-								connectionFilter = (port, address, socket, callback) => setImmediate(callback);
+								connectionFilter = (destination, origin, callback) => setImmediate(callback);
 							}
 
 							// capture connection filter errors
@@ -206,8 +206,16 @@ class SocksServer {
 								// emit failed destination connection event
 								self.server.emit(
 									EVENTS.CONNECTION_FILTER,
-									args.dst.port,
-									args.dst.addr,
+									// destination
+									{
+										address : args.dst.addr,
+										port : args.dst.port
+									},
+									// origin
+									{
+										address : socket.remoteAddress,
+										port : socket.remotePort
+									},
 									err);
 
 								// respond with failure
@@ -216,9 +224,16 @@ class SocksServer {
 
 							// perform connection
 							return connectionFilter(
-								args.dst.port,
-								args.dst.addr,
-								socket,
+								// destination
+								{
+									address : args.dst.addr,
+									port : args.dst.port
+								},
+								// origin
+								{
+									address : socket.remoteAddress,
+									port : socket.remotePort
+								},
 								connectionFilterDomain.intercept(() => {
 									let destination = net.createConnection(
 										args.dst.port,
@@ -240,7 +255,7 @@ class SocksServer {
 									// capture successful connection
 									destination.on('connect', () => {
 										let info = {
-											host : args.dst.addr,
+											address : args.dst.addr,
 											port : args.dst.port
 										};
 
@@ -251,10 +266,15 @@ class SocksServer {
 										destination.on('data', (data) => {
 											self.server.emit(EVENTS.PROXY_DATA, data);
 										});
+
+										connectionFilterDomain.exit();
 									});
 
 									// capture connection errors and response appropriately
 									destination.on('error', (err) => {
+										// exit the connection filter domain
+										connectionFilterDomain.exit();
+
 										// notify of connection error
 										err.addr = args.dst.addr;
 										err.atyp = args.atyp;
