@@ -1,3 +1,8 @@
+# v2.1.0 - 2020/09/28
+
+* Updated dependencies
+* Added `proxyDisconnect` event per feature request in Issue #41
+
 # v2.0.1 - 2020/03/12
 
 * Removed `put` from `package.json`

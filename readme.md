@@ -20,27 +20,38 @@ const
   server = socks5.createServer().listen(1080);
 
 // When a reqest arrives for a remote destination
-server.on('proxyConnect', function (info, destination) {
+server.on('proxyConnect', (info, destination) => {
   console.log('connected to remote server at %s:%d', info.address, info.port);
 
-  destination.on('data', function (data) {
+  destination.on('data', (data) => {
     console.log(data.length);
   });
 });
 
 // When data arrives from the remote connection
-server.on('proxyData', function (data) {
+server.on('proxyData', (data) => {
   console.log(data.length);
 });
 
 // When an error occurs connecting to remote destination
-server.on('proxyError', function (err) {
+server.on('proxyError', (err) => {
   console.error('unable to connect to remote server');
   console.error(err);
 });
 
+// When a request for a remote destination ends
+server.on('proxyDisconnect', (originInfo, destinationInfo, hadError) => {
+  console.log(
+    'client %s:%d request has disconnected from remote server at %s:%d with %serror',
+    originInfo.address,
+    originInfo.port,
+    destinationInfo.address,
+    destinationInfo.port,
+    hadError ? '' : 'no ');
+});
+
 // When a proxy connection ends
-server.on('proxyEnd', function (response, args) {
+server.on('proxyEnd', (response, args) => {
   console.log('socket closed with code %d', response);
   console.log(args);
 });
@@ -186,6 +197,7 @@ The socks5 server supports all events that exist on a native [net.Server](http:/
 * [connectionFilter](#connectionfilter) - When a destination address is denied by the configured connection filter callback, this event is fired
 * [proxyConnect](#proxyconnect) - After handshake and optional authentication, this event is emitted upon successful connection with the remote destination
 * [proxyError](#proxyerror) - If connection to the remote destination fails, this event is emitted
+* [proxyDisconnect](#proxydisconnect) - If a successful `proxyConnect` occurs, this event is emitted when the remote destination ends the connection
 * [proxyData](#proxydata) - When data is recieved from the remote destination, this event is fired
 * [proxyEnd](#proxyend) - This event is emitted when the SOCKS5 client connection is closed for any reason
 
@@ -206,6 +218,7 @@ Outputs the following:
   HANDSHAKE: 'handshake',
   PROXY_CONNECT: 'proxyConnect',
   PROXY_DATA: 'proxyData',
+  PROXY_DISCONNECT: 'proxyDisconnect',
   PROXY_END: 'proxyEnd',
   PROXY_ERROR: 'proxyError' }
 ```
@@ -276,8 +289,8 @@ server.on('connectionFilter', function (port, address, err) {
 This event is emitted each time a connection is requested to a remote destination. The callback accepts two arguments:
 
 * info - object with two fields
-  * address - the TCP address of the remote server
-  * port - the TCP port of the remote server
+  * address - the TCP address of the remote (destination) server
+  * port - the TCP port of the remote (destination) server
 * destination - the destination TCP [net.Socket](http://nodejs.org/api/net.html#net_class_net_socket)
 
 ```javascript
@@ -306,6 +319,31 @@ server.on('proxyConnect', function (info, destination) {
   destination.on('data', function (data) {
     console.log('data received from remote destination: %d', data.length);
   });
+});
+```
+
+### proxyDisconnect
+
+This event is emitted after a `proxyConnect` when a connection to a remote destination has ended. The callback accepts three arguments:
+
+* originInfo - object with two fields
+  * address - the TCP address of the origin of the request
+  * port - the TCP port of the origin of the request
+* destinationInfo - object with two fields
+  * address - the TCP address of the remote (destination) server
+  * port the TCP port of the remote (destination) server
+* hadError - a Boolean indicating if a transmission error occurred after connecting with the remote (destination) server
+
+```javascript
+// When a request for a remote destination ends
+server.on('proxyDisconnect', function (err) {
+  console.log(
+    'client %s:%d request has disconnected from remote server at %s:%d with %serror',
+    originInfo.address,
+    originInfo.port,
+    destinationInfo.address,
+    destinationInfo.port,
+    hadError ? '' : 'no ');
 });
 ```
 

@@ -30,6 +30,17 @@ server.on('proxyError', function (err) {
 	console.error(err);
 });
 
+// When a request for a remote destination ends
+server.on('proxyDisconnect', function (originInfo, destinationInfo, hadError) {
+  console.log(
+    'client %s:%d request has disconnected from remote server at %s:%d with %serror',
+    originInfo.address,
+    originInfo.port,
+    destinationInfo.address,
+    destinationInfo.port,
+    hadError ? '' : 'no ');
+});
+
 // When a proxy connection ends
 server.on('proxyEnd', function (response, args) {
 	console.log('socket closed with code %d', response);
