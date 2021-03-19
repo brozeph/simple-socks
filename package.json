@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "proxies requests ",
   "main": "dist/socks5.js",
   "scripts": {
@@ -37,23 +37,23 @@
   "bugs": {
     "url": "http://github.com/brozeph/simple-socks/issues"
   },
-  "dependencies": {
-    "@babel/polyfill": "^7.11.5",
-    "@babel/runtime": "^7.11.2",
-    "binary": "^0.3.0"
-  },
   "devDependencies": {
-    "@babel/cli": "^7.11.6",
-    "@babel/core": "^7.11.6",
-    "@babel/plugin-transform-runtime": "^7.11.5",
-    "@babel/preset-env": "^7.11.5",
-    "@babel/register": "^7.11.5",
+    "@babel/cli": "^7.13.10",
+    "@babel/core": "^7.13.10",
+    "@babel/plugin-transform-runtime": "^7.13.10",
+    "@babel/preset-env": "^7.13.10",
+    "@babel/register": "^7.13.8",
     "babel-eslint": "^10.1.0",
+    "eslint": "^6.8.0",
     "eslint-plugin-babel": "^5.3.1",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
     "gulp-clean": "^0.4.0",
     "gulp-eslint": "^6.0.0",
-    "gulp-sourcemaps": "^2.6.5"
+    "gulp-sourcemaps": "^3.0.0"
+  },
+  "dependencies": {
+    "@babel/runtime-corejs3": "^7.13.10",
+    "binary": "^0.3.0"
   }
 }
