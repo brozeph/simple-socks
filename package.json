@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "proxies requests ",
   "main": "dist/socks5.js",
   "scripts": {
@@ -38,14 +38,15 @@
     "url": "http://github.com/brozeph/simple-socks/issues"
   },
   "devDependencies": {
-    "@babel/cli": "^7.13.10",
-    "@babel/core": "^7.13.10",
+    "@babel/cli": "^7.13.14",
+    "@babel/core": "^7.13.14",
+    "@babel/eslint-parser": "^7.13.14",
+    "@babel/eslint-plugin": "^7.13.10",
     "@babel/plugin-transform-runtime": "^7.13.10",
-    "@babel/preset-env": "^7.13.10",
-    "@babel/register": "^7.13.8",
+    "@babel/preset-env": "^7.13.12",
+    "@babel/register": "^7.13.14",
     "babel-eslint": "^10.1.0",
-    "eslint": "^6.8.0",
-    "eslint-plugin-babel": "^5.3.1",
+    "eslint": "^7.23.0",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
     "gulp-clean": "^0.4.0",

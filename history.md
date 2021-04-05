@@ -1,7 +1,15 @@
-# v2.1.0 - 2020/09/28
+# v2.2.1 - 2021/04/05
 
 * Updated dependencies
-* Added `proxyDisconnect` event per feature request in Issue #41
+# v2.2.0 - 2020/03/19
+
+* Updated dependencies and moved to corejs 3
+
+# v2.1.0 - 2020/09/28
+
+* Removed dependency on put
+* Added `proxyDisconnect` event
+* Updated dependencies
 
 # v2.0.1 - 2020/03/12
 
