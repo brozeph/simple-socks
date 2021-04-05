@@ -234,7 +234,7 @@ class SocksServer {
 									port : socket.remotePort
 								},
 								connectionFilterDomain.intercept(() => {
-									let 
+									let
 										destination = net.createConnection(
 											args.dst.port,
 											args.dst.addr,
@@ -420,7 +420,7 @@ class SocksServer {
 }
 
 exports.createServer = (options) => {
-	let socksServer = new SocksServer(options)
+	let socksServer = new SocksServer(options);
 	return socksServer.server;
 };
 exports.events = EVENTS;
