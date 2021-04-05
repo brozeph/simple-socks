@@ -1,3 +1,7 @@
+# v2.1.0 - 2021/04/05
+
+* Updated babel dependencies and moved to corejs 3
+
 # v2.0.1 - 2020/03/12
 
 * Removed `put` from `package.json`
