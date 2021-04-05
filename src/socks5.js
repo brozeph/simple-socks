@@ -21,6 +21,7 @@ const
 		HANDSHAKE : 'handshake',
 		PROXY_CONNECT : 'proxyConnect',
 		PROXY_DATA : 'proxyData',
+		PROXY_DISCONNECT : 'proxyDisconnect',
 		PROXY_END : 'proxyEnd',
 		PROXY_ERROR : 'proxyError'
 	},
@@ -233,36 +234,47 @@ class SocksServer {
 									port : socket.remotePort
 								},
 								connectionFilterDomain.intercept(() => {
-									let destination = net.createConnection(
-										args.dst.port,
-										args.dst.addr,
-										() => {
-											// prepare a success response
-											let responseBuffer = Buffer.alloc(args.requestBuffer.length);
-											args.requestBuffer.copy(responseBuffer);
-											responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
+									let 
+										destination = net.createConnection(
+											args.dst.port,
+											args.dst.addr,
+											() => {
+												// prepare a success response
+												let responseBuffer = Buffer.alloc(args.requestBuffer.length);
+												args.requestBuffer.copy(responseBuffer);
+												responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
 
-											// write acknowledgement to client...
-											socket.write(responseBuffer, () => {
-												// listen for data bi-directionally
-												destination.pipe(socket);
-												socket.pipe(destination);
-											});
-										});
+												// write acknowledgement to client...
+												socket.write(responseBuffer, () => {
+													// listen for data bi-directionally
+													destination.pipe(socket);
+													socket.pipe(destination);
+												});
+											}),
+										destinationInfo = {
+											address : args.dst.addr,
+											port : args.dst.port
+										},
+										originInfo = {
+											address : socket.remoteAddress,
+											port : socket.remotePort
+										};
 
 									// capture successful connection
 									destination.on('connect', () => {
-										let info = {
-											address : args.dst.addr,
-											port : args.dst.port
-										};
-
 										// emit connection event
-										self.server.emit(EVENTS.PROXY_CONNECT, info, destination);
+										self.server.emit(EVENTS.PROXY_CONNECT, destinationInfo, destination);
 
 										// capture and emit proxied connection data
 										destination.on('data', (data) => {
 											self.server.emit(EVENTS.PROXY_DATA, data);
+										});
+
+										// capture close of destination and emit pending disconnect
+										// note: this event is only emitted once the destination socket is fully closed
+										destination.on('close', (hadError) => {
+											// indicate client connection end
+											self.server.emit(EVENTS.PROXY_DISCONNECT, originInfo, destinationInfo, hadError);
 										});
 
 										connectionFilterDomain.exit();
