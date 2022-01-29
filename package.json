@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "proxies requests ",
   "main": "dist/socks5.js",
   "scripts": {
@@ -15,7 +15,8 @@
   "author": "https://github.com/brozeph",
   "contributors": [
     "https://github.com/pronskiy",
-    "https://github.com/fabiensk"
+    "https://github.com/fabiensk",
+    "https://github.com/lanius-collaris"
   ],
   "license": "MIT",
   "keywords": [
@@ -38,15 +39,15 @@
     "url": "http://github.com/brozeph/simple-socks/issues"
   },
   "devDependencies": {
-    "@babel/cli": "^7.13.14",
-    "@babel/core": "^7.13.14",
-    "@babel/eslint-parser": "^7.13.14",
-    "@babel/eslint-plugin": "^7.13.10",
-    "@babel/plugin-transform-runtime": "^7.13.10",
-    "@babel/preset-env": "^7.13.12",
-    "@babel/register": "^7.13.14",
+    "@babel/cli": "^7.16.8",
+    "@babel/core": "^7.16.12",
+    "@babel/eslint-parser": "^7.16.5",
+    "@babel/eslint-plugin": "^7.16.5",
+    "@babel/plugin-transform-runtime": "^7.16.10",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/register": "^7.16.9",
     "babel-eslint": "^10.1.0",
-    "eslint": "^7.23.0",
+    "eslint": "^8.8.0",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
     "gulp-clean": "^0.4.0",
@@ -54,7 +55,7 @@
     "gulp-sourcemaps": "^3.0.0"
   },
   "dependencies": {
-    "@babel/runtime-corejs3": "^7.13.10",
+    "@babel/runtime-corejs3": "^7.16.8",
     "binary": "^0.3.0"
   }
 }

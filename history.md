@@ -1,3 +1,9 @@
+# v2.2.2 - 2022/01/29
+
+* Fixed issue with ipv6 (fix by @Lanius-collaris)
+* Updated dependencies
+* Realized we should have waited until Wednesday the 2nd to launch this release
+
 # v2.2.1 - 2021/04/05
 
 * Updated dependencies
