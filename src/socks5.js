@@ -175,7 +175,7 @@ class SocksServer {
 
 										// convert DWORD to two WORD values and append
 										/* eslint no-magic-numbers : 0 */
-										args.dst.addr.push(((x & 0xffff0000) >> 16).toString(16));
+										args.dst.addr.push((x  >>> 16).toString(16));
 										args.dst.addr.push(((x & 0xffff)).toString(16));
 									});
 
