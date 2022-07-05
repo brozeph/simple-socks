@@ -15,9 +15,9 @@ npm install simple-socks
 In the [examples](examples/) folder exists two examples, one that requires no authentication and one that requires username/password authentication. Below is an example with no authentication:
 
 ```javascript
-const
-  socks5 = require('simple-socks'),
-  server = socks5.createServer().listen(1080);
+import socks5 from 'simple-socks'
+
+const server = socks5.createServer().listen(1080);
 
 // When a reqest arrives for a remote destination
 server.on('proxyConnect', (info, destination) => {
@@ -98,7 +98,7 @@ node examples/createServerConnectionFilter
 In a separate terminal window:
 
 ```bash
-curl http://www.us.gov --socks5 127.0.0.1:1080 # allowed
+curl http://www.github.com --socks5 127.0.0.1:1080 # allowed
 curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 ```
 
@@ -109,7 +109,9 @@ curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 Factory method that creates an instance of a SOCKS5 proxy server:
 
 ```javascript
-const server = require('simple-socks').createServer();
+import socks5 from 'simple-socks';
+
+const server = socks5.createServer();
 
 server.listen(1080, '0.0.0.0', function () {
   console.log('SOCKS5 proxy server started on 0.0.0.0:1080');
@@ -126,7 +128,7 @@ This method accepts an optional `options` argument:
 To make the socks5 server require username/password authentication, supply a function callback in the options as follows:
 
 ```javascript
-const socks5 = require('simple-socks');
+import socks5 from 'simple-socks';
 
 const options = {
   authenticate : function (username, password, socket, callback) {
@@ -156,7 +158,9 @@ The `authenticate` callback accepts three arguments:
 Allows you to filter incoming connections, based on either origin and/or destination, return `false` to disallow:
 
 ```javascript
-server = socks5.createServer({
+import socks5 from 'simple-socks';
+
+const server = socks5.createServer({
   connectionFilter : function (destination, origin, callback) {
     if (origin.address === '127.0.0.1') {
       console.log('denying access from %s:%s', origin.address, origin.port);

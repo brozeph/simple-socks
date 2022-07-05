@@ -1,3 +1,8 @@
+# v3.0.0 - 2022/07/04
+
+* Removed Babel dependencies
+* Switched from Travis CI to Github Actions
+
 # v2.2.2 - 2022/01/29
 
 * Fixed issue with ipv6 (fix by @Lanius-collaris)

@@ -6,7 +6,7 @@ import {
 	RFC_1928_VERSION,
 	RFC_1929_REPLIES,
 	RFC_1929_VERSION
-} from './constants';
+} from './constants.js';
 
 import binary from 'binary';
 import domain from 'domain';
@@ -419,9 +419,11 @@ class SocksServer {
 	}
 }
 
-exports.createServer = (options) => {
-	let socksServer = new SocksServer(options);
-	return socksServer.server;
-};
-exports.events = EVENTS;
-exports.SocksServer = SocksServer;
+export default {
+	createServer: (options) => {
+		let socksServer = new SocksServer(options);
+		return socksServer.server;
+	},
+	events: EVENTS,
+	SocksServer: SocksServer
+}

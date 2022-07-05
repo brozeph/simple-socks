@@ -1,17 +1,17 @@
-const
-	socks5 = require('../dist/socks5'),
-	server = socks5.createServer({
-		authenticate : function (username, password, socket, callback) {
-			// verify username/password
-			if (username !== 'foo' || password !== 'bar') {
-				// respond with auth failure (can be any error)
-				return setImmediate(callback, new Error('invalid credentials'));
-			}
+import socks5 from '../src/socks5.js';
 
-			// return successful authentication
-			return setImmediate(callback);
+const server = socks5.createServer({
+	authenticate : function (username, password, socket, callback) {
+		// verify username/password
+		if (username !== 'foo' || password !== 'bar') {
+			// respond with auth failure (can be any error)
+			return setImmediate(callback, new Error('invalid credentials'));
 		}
-	});
+
+		// return successful authentication
+		return setImmediate(callback);
+	}
+});
 
 // start listening!
 server.listen(1080);
