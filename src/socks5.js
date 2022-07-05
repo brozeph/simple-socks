@@ -420,10 +420,10 @@ class SocksServer {
 }
 
 export default {
+	SocksServer,
 	createServer: (options) => {
 		let socksServer = new SocksServer(options);
 		return socksServer.server;
 	},
-	events: EVENTS,
-	SocksServer: SocksServer
+	events: EVENTS
 }
