@@ -1,6 +1,6 @@
-const
-	socks5 = require('../dist/socks5'),
-	server = socks5.createServer();
+import socks5 from '../src/socks5.js';
+
+const server = socks5.createServer();
 
 // start listening!
 server.listen(1080);
