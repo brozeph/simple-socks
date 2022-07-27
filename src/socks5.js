@@ -218,7 +218,7 @@ class SocksServer {
 									err);
 
 								// respond with failure
-								return end(RFC_1929_REPLIES.CONNECTION_NOT_ALLOWED, args);
+								return end(RFC_1928_REPLIES.CONNECTION_NOT_ALLOWED, args);
 							});
 
 							// perform connection
