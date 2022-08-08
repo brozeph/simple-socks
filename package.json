@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "proxies requests ",
   "type": "module",
   "main": "src/socks5.js",
@@ -35,12 +35,12 @@
   "bugs": {
     "url": "http://github.com/brozeph/simple-socks/issues"
   },
-  "dependencies": {
-    "binary": "^0.3.0"
-  },
   "devDependencies": {
-    "eslint": "^8.19.0",
+    "eslint": "^8.21.0",
     "gulp": "^4.0.2",
     "gulp-eslint": "^6.0.0"
+  },
+  "dependencies": {
+    "binary": "^0.3.0"
   }
 }

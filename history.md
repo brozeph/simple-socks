@@ -1,3 +1,12 @@
+# v3.1.0 - 2022/08/08
+
+* Fixed RFC version constant (fix by @e9x)
+* Updated dependencies
+
+# v3.0.1 - 2022/07/18
+
+* Fixed bug where src folder was not properly referenced in package.json file
+
 # v3.0.0 - 2022/07/04
 
 * Removed Babel dependencies
