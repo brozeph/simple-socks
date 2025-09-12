@@ -6,6 +6,7 @@
 * Updated eslint dependency
 * Updated examples to resolve minor lint issues
 * Added typescript definitions to package (addresses [#57](https://github.com/brozeph/simple-socks/issues/57))
+* Added examples/createMultipleServers.js to demonstrate running multiple servers on same port bound to different interfaces (reference to [#47](https://github.com/brozeph/simple-socks/issues/47))
 
 ## v3.1.0 - 2022/08/08
 

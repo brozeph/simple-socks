@@ -102,6 +102,14 @@ curl http://www.github.com --socks5 127.0.0.1:1080 # allowed
 curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 ```
 
+#### Multiple Servers
+
+For running multiple SOCKS5 servers on the same port, but bound to different interfaces, look at [examples/createMultipleServers.js](examples/createMultipleServers.js):
+
+```bash
+node examples/createMultipleServers
+```
+
 ## Methods
 
 ### createServer
@@ -190,6 +198,38 @@ The `connectionFilter` callback accepts three arguments:
 * callback - callback for destination and/or origin address validation... if connections are allowed to the destination address, the callback should be called with no arguments
 
 For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
+
+### Multiple Interfaces
+
+If your machine has multiple IP addresses and you want a separate SOCKS5 server bound to each one, create a server per interface and bind explicitly using the object form of `listen` with `exclusive: true`:
+
+```javascript
+import socks5 from 'simple-socks';
+
+const hosts = ['10.0.0.1', '10.0.0.2', '10.0.0.3'];
+const port = 1080;
+
+hosts.forEach((host) => {
+  const server = socks5.createServer();
+
+  server.on('listening', () => {
+    const addr = server.address();
+    // should show the specific host, not 0.0.0.0
+    console.log('listening on %s:%d', addr.address, addr.port);
+  });
+
+  // Force an interface-specific, exclusive bind
+  server.listen({ port, host, exclusive: true });
+});
+```
+
+Notes:
+
+* If you omit `host` (e.g., `server.listen(1080)`), Node binds to `0.0.0.0` and that listener will accept connections for all interfaces.
+* Prefer the object form to avoid argument order mistakes in `listen(port, host, cb)` and to set `exclusive: true` when running multiple listeners on the same port.
+* You can also verify the bound address via `server.address()` after the `listening` event.
+
+See also: [examples/createMultipleServers.js](examples/createMultipleServers.js).
 
 ## Events
 
