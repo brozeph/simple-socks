@@ -29,6 +29,17 @@ export type ConnectionFilterFn = (
 export interface Options {
   authenticate?: AuthenticateFn;
   connectionFilter?: ConnectionFilterFn;
+  gssapi?: {
+    enabled: boolean;
+    // Phase 1 pluggable provider. If absent, GSSAPI is not selected.
+    provider?: {
+      authenticate: (
+        socket: Socket,
+        firstChunk: Buffer,
+        callback: (err: Error | null, principal?: string) => void
+      ) => void;
+    };
+  };
 }
 
 export class SocksServer {
@@ -59,4 +70,3 @@ declare const _default: {
 };
 
 export default _default;
-

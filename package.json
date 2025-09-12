@@ -7,7 +7,7 @@
   "types": "index.d.ts",
   "engine": "node >= 16.0",
   "scripts": {
-    "lint": "npx eslint src/**/*.js"
+    "lint": "npx eslint \"src/**/*.js\" \"examples/**/*.js\""
   },
   "author": "https://github.com/brozeph",
   "contributors": [

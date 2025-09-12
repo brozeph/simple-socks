@@ -110,6 +110,32 @@ For running multiple SOCKS5 servers on the same port, but bound to different int
 node examples/createMultipleServers
 ```
 
+#### GSSAPI/Negotiate (Kerberos)
+
+To run a SOCKS5 server that authenticates via GSSAPI/Negotiate using a minimal provider backed by the `kerberos` module:
+
+Prerequisites:
+
+* Install the native dependency: `npm install kerberos`
+* Ensure a service principal is available (e.g., `rcmd/<hostname>@REALM`) and a keytab is accessible to the process.
+
+Run the example:
+
+```bash
+node examples/createServerWithGssapi
+```
+
+Client test (example with curl):
+
+```bash
+curl --socks5 127.0.0.1:1080 \
+     --socks5-gssapi \
+     --socks5-gssapi-service rcmd \
+     https://example.com
+```
+
+Provider reference: [examples/gssapiKerberosProvider.js](examples/gssapiKerberosProvider.js).
+
 ## Methods
 
 ### createServer
@@ -230,6 +256,39 @@ Notes:
 * You can also verify the bound address via `server.address()` after the `listening` event.
 
 See also: [examples/createMultipleServers.js](examples/createMultipleServers.js).
+
+### GSSAPI/Negotiate (Phase 1)
+
+This library can be configured to prefer GSSAPI/Negotiate (RFC 1961) when a provider is supplied. This callback allows code to delegate the GSS exchange to a pluggable provider and, upon success, proceeds without wrapping subsequent data (auth-only).
+
+Enable GSSAPI by supplying a `gssapi` option with a provider implementing `authenticate(socket, firstChunk, callback)`:
+
+```javascript
+import socks5 from 'simple-socks';
+
+const server = socks5.createServer({
+  gssapi: {
+    enabled: true,
+    provider: {
+      authenticate(socket, firstChunk, callback) {
+        // Implement RFC 1961 token exchange here.
+        // Use system GSS libraries via your integration and call callback(err, principal)
+        // on success with the authenticated principal string.
+        callback(new Error('GSSAPI provider not implemented'));
+      }
+    }
+  }
+});
+
+server.listen(1080);
+```
+
+Notes:
+
+* The server selects GSSAPI only when `gssapi.enabled` is true, a provider is present, and the client offers method 0x01 (GSSAPI) during negotiation.
+* On successful GSS authentication the server emits the standard `authenticate` event with the principal name.
+* This does not enable integrity/confidentiality wrapping of subsequent SOCKS traffic.
+* To integrate with system GSS (MIT/Heimdal), use or build a provider that bridges to your platform’s GSS-API and performs the token exchange on the socket.
 
 ## Events
 

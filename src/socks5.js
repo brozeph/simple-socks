@@ -115,6 +115,41 @@ class SocksServer {
 			}
 
 			/**
+			 * RFC 1961 - GSSAPI authentication sub-negotiation.
+			 * Delegates the negotiation to a user-provided provider.
+			 *
+			 * Provider contract:
+			 *   authenticate(socket, firstChunk, callback)
+			 *     - socket: client socket; provider may read/write further frames
+			 *     - firstChunk: Buffer after method selection
+			 *     - callback(err, principal): invoke with error or authenticated principal
+			 *
+			 * @param {Buffer} buffer - first data chunk for GSS-API negotiation
+			 * @returns {undefined}
+			 **/
+			function gssapi (buffer) {
+				let provider = self.options.gssapi && self.options.gssapi.provider;
+
+				if (!provider || typeof provider.authenticate !== 'function') {
+					return socket.destroy(new Error('GSSAPI requested but no provider configured'));
+				}
+
+				try {
+					provider.authenticate(socket, buffer, (err, principal) => {
+						if (err) {
+							self.server.emit(EVENTS.AUTHENTICATION_ERROR, '', err);
+							return socket.destroy(err);
+						}
+
+						self.server.emit(EVENTS.AUTHENTICATION, principal || '');
+						socket.once('data', connect);
+					});
+				} catch (ex) {
+					return socket.destroy(ex);
+				}
+			}
+
+			/**
 			 * +----+-----+-------+------+----------+----------+
 			 * |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
 			 * +----+-----+-------+------+----------+----------+
@@ -378,17 +413,25 @@ class SocksServer {
 							basicAuth = typeof self.options.authenticate === 'function',
 							clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined' &&
 								acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION],
+							clientSupportsGss = typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== 'undefined' &&
+								acceptedMethods[RFC_1928_METHODS.GSSAPI],
 							clientSupportsNoAuth = typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined' &&
 								acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED],
 							next = connect,
-							responseBuffer = Buffer.allocUnsafe(2);
+							responseBuffer = Buffer.allocUnsafe(2),
+							serverSupportsGss = Boolean(self.options.gssapi && self.options.gssapi.enabled && self.options.gssapi.provider);
 
 						// form response Buffer
 						responseBuffer[0] = RFC_1928_VERSION;
 						responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 
+						// prefer GSSAPI when enabled and mutually supported
+						if (serverSupportsGss && clientSupportsGss) {
+							responseBuffer[1] = RFC_1928_METHODS.GSSAPI;
+							next = gssapi;
+
 						// check for basic auth configuration and mutual support
-						if (basicAuth && clientSupportsBasic) {
+						} else if (basicAuth && clientSupportsBasic) {
 							responseBuffer[1] = RFC_1928_METHODS.BASIC_AUTHENTICATION;
 							next = authenticate;
 
