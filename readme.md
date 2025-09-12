@@ -6,7 +6,7 @@ Creates a simple SOCKS5 server and exposes additional SOCKS5 proxy events.
 
 ## Installation
 
-```
+```bash
 npm install simple-socks
 ```
 
@@ -102,6 +102,40 @@ curl http://www.github.com --socks5 127.0.0.1:1080 # allowed
 curl http://www.google.com --socks5 127.0.0.1:1080 # denied
 ```
 
+#### Multiple Servers
+
+For running multiple SOCKS5 servers on the same port, but bound to different interfaces, look at [examples/createMultipleServers.js](examples/createMultipleServers.js):
+
+```bash
+node examples/createMultipleServers
+```
+
+#### GSSAPI/Negotiate (Kerberos)
+
+To run a SOCKS5 server that authenticates via GSSAPI/Negotiate using a minimal provider backed by the `kerberos` module:
+
+Prerequisites:
+
+* Install the native dependency: `npm install kerberos`
+* Ensure a service principal is available (e.g., `rcmd/<hostname>@REALM`) and a keytab is accessible to the process.
+
+Run the example:
+
+```bash
+node examples/createServerWithGssapi
+```
+
+Client test (example with curl):
+
+```bash
+curl --socks5 127.0.0.1:1080 \
+     --socks5-gssapi \
+     --socks5-gssapi-service rcmd \
+     https://example.com
+```
+
+Provider reference: [examples/gssapiKerberosProvider.js](examples/gssapiKerberosProvider.js).
+
 ## Methods
 
 ### createServer
@@ -122,8 +156,9 @@ This method accepts an optional `options` argument:
 
 * `options.authentication` - A callback for authentication
 * `options.connectionFilter` - A callback for connection filtering
+* `options.idleTimeout` - Milliseconds of inactivity before destroying client/destination sockets (0 is disabled, default 0)
 
-#### authentication
+#### authentication callback
 
 To make the socks5 server require username/password authentication, supply a function callback in the options as follows:
 
@@ -153,7 +188,7 @@ The `authenticate` callback accepts three arguments:
 * socket - the socket for the client connection
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
-#### connectionFilter
+#### connectionFilter callback
 
 Allows you to filter incoming connections, based on either origin and/or destination, return `false` to disallow:
 
@@ -190,6 +225,71 @@ The `connectionFilter` callback accepts three arguments:
 * callback - callback for destination and/or origin address validation... if connections are allowed to the destination address, the callback should be called with no arguments
 
 For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
+
+### Multiple Interfaces
+
+If your machine has multiple IP addresses and you want a separate SOCKS5 server bound to each one, create a server per interface and bind explicitly using the object form of `listen` with `exclusive: true`:
+
+```javascript
+import socks5 from 'simple-socks';
+
+const hosts = ['10.0.0.1', '10.0.0.2', '10.0.0.3'];
+const port = 1080;
+
+hosts.forEach((host) => {
+  const server = socks5.createServer();
+
+  server.on('listening', () => {
+    const addr = server.address();
+    // should show the specific host, not 0.0.0.0
+    console.log('listening on %s:%d', addr.address, addr.port);
+  });
+
+  // Force an interface-specific, exclusive bind
+  server.listen({ port, host, exclusive: true });
+});
+```
+
+Notes:
+
+* If you omit `host` (e.g., `server.listen(1080)`), Node binds to `0.0.0.0` and that listener will accept connections for all interfaces.
+* Prefer the object form to avoid argument order mistakes in `listen(port, host, cb)` and to set `exclusive: true` when running multiple listeners on the same port.
+* You can also verify the bound address via `server.address()` after the `listening` event.
+
+See also: [examples/createMultipleServers.js](examples/createMultipleServers.js).
+
+### GSSAPI/Negotiate (Phase 1)
+
+This library can be configured to prefer GSSAPI/Negotiate (RFC 1961) when a provider is supplied. This callback allows code to delegate the GSS exchange to a pluggable provider and, upon success, proceeds without wrapping subsequent data (auth-only).
+
+Enable GSSAPI by supplying a `gssapi` option with a provider implementing `authenticate(socket, firstChunk, callback)`:
+
+```javascript
+import socks5 from 'simple-socks';
+
+const server = socks5.createServer({
+  gssapi: {
+    enabled: true,
+    provider: {
+      authenticate(socket, firstChunk, callback) {
+        // Implement RFC 1961 token exchange here.
+        // Use system GSS libraries via your integration and call callback(err, principal)
+        // on success with the authenticated principal string.
+        callback(new Error('GSSAPI provider not implemented'));
+      }
+    }
+  }
+});
+
+server.listen(1080);
+```
+
+Notes:
+
+* The server selects GSSAPI only when `gssapi.enabled` is true, a provider is present, and the client offers method 0x01 (GSSAPI) during negotiation.
+* On successful GSS authentication the server emits the standard `authenticate` event with the principal name.
+* This does not enable integrity/confidentiality wrapping of subsequent SOCKS traffic.
+* To integrate with system GSS (MIT/Heimdal), use or build a provider that bridges to your platform’s GSS-API and performs the token exchange on the socket.
 
 ## Events
 
@@ -382,3 +482,12 @@ server.on('proxyEnd', function (response, args) {
   console.log(args);
 });
 ```
+
+## macOS Authentication Notes
+
+Some versions of the macOS built‑in SOCKS client (used when enabling a SOCKS proxy in Network settings) do not correctly implement RFC 1929 username/password authentication. They may not advertise BASIC (0x02) during method negotiation, or send a zero‑length password during the RFC 1929 sub‑negotiation.
+
+* The server selects BASIC only when the client advertises support for it. If `authenticate` is configured but the client does not offer BASIC, the server responds with “no acceptable methods” and closes.
+* If a client sends a zero‑length username or password during RFC 1929 authentication, the server rejects the authentication.
+
+If you require username/password auth from macOS clients, use a client that supports RFC 1929 (for example, `curl --socks5 --proxy-user`, or browsers/extensions that implement SOCKS5 BASIC). Alternatively, consider a different method such as GSSAPI/Negotiate on both client and server; the built‑in macOS client may favor that, but it is not implemented by this library.

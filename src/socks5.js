@@ -40,10 +40,30 @@ class SocksServer {
 
 		this.activeSessions = [];
 		this.options = options || {};
+		this.idleTimeout = this.options.idleTimeout || 0;
 		this.server = net.createServer((socket) => {
 			socket.on('error', (err) => {
 				self.server.emit(EVENTS.PROXY_ERROR, err);
 			});
+
+			// configure idle timeout for client socket
+			if (self.idleTimeout && typeof socket.setTimeout === 'function') {
+				socket.setTimeout(self.idleTimeout, () => {
+					try {
+						socket.destroy(new Error('socket idle timeout'));
+					} catch (e) {
+						// ignore socket destroy errors
+					}
+				});
+			}
+
+			// helper to safely remove from active sessions
+			function removeActiveSession () {
+				const idx = self.activeSessions.indexOf(socket);
+				if (idx !== -1) {
+					self.activeSessions.splice(idx, 1);
+				}
+			}
 
 			/**
 			 * +----+------+----------+------+----------+
@@ -72,6 +92,11 @@ class SocksServer {
 
 						// verify version is appropriate
 						if (args.ver !== RFC_1929_VERSION) {
+							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
+						}
+
+						// per RFC 1929, username and password lengths must be 1..255
+						if (!args.ulen || !args.plen) {
 							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
 						}
 
@@ -107,6 +132,41 @@ class SocksServer {
 								});
 						}));
 					});
+			}
+
+			/**
+			 * RFC 1961 - GSSAPI authentication sub-negotiation.
+			 * Delegates the negotiation to a user-provided provider.
+			 *
+			 * Provider contract:
+			 *   authenticate(socket, firstChunk, callback)
+			 *     - socket: client socket; provider may read/write further frames
+			 *     - firstChunk: Buffer after method selection
+			 *     - callback(err, principal): invoke with error or authenticated principal
+			 *
+			 * @param {Buffer} buffer - first data chunk for GSS-API negotiation
+			 * @returns {undefined}
+			 **/
+			function gssapi (buffer) {
+				let provider = self.options.gssapi && self.options.gssapi.provider;
+
+				if (!provider || typeof provider.authenticate !== 'function') {
+					return socket.destroy(new Error('GSSAPI requested but no provider configured'));
+				}
+
+				try {
+					provider.authenticate(socket, buffer, (err, principal) => {
+						if (err) {
+							self.server.emit(EVENTS.AUTHENTICATION_ERROR, '', err);
+							return socket.destroy(err);
+						}
+
+						self.server.emit(EVENTS.AUTHENTICATION, principal || '');
+						socket.once('data', connect);
+					});
+				} catch (ex) {
+					return socket.destroy(ex);
+				}
 			}
 
 			/**
@@ -249,6 +309,38 @@ class SocksServer {
 													// listen for data bi-directionally
 													destination.pipe(socket);
 													socket.pipe(destination);
+
+													// configure idle timeout for destination socket
+													if (self.idleTimeout && typeof destination.setTimeout === 'function') {
+														destination.setTimeout(self.idleTimeout, () => {
+															try {
+																destination.destroy(new Error('destination idle timeout')); 
+															} catch (e) {
+																// ignore errors		
+															}
+														});
+													}
+
+													// ensure proper teardown when either side ends/closes/errors
+													const teardownDestination = () => {
+														try { 
+															destination.destroy(); 
+														} catch (e) {
+															// ignore socket destroy errors
+														}
+													};
+													const teardownSocket = () => {
+														try { 
+															socket.destroy(); 
+														} catch (e) {
+															// ignore socket destroy errors
+														}
+													};
+
+													socket.once('close', teardownDestination);
+													socket.once('end', teardownDestination);
+													socket.once('error', teardownDestination);
+													destination.once('error', teardownSocket);
 												});
 											}),
 										destinationInfo = {
@@ -371,23 +463,32 @@ class SocksServer {
 								return methods;
 							}, {}),
 							basicAuth = typeof self.options.authenticate === 'function',
+							clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined' &&
+								acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION],
+							clientSupportsGss = typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== 'undefined' &&
+								acceptedMethods[RFC_1928_METHODS.GSSAPI],
+							clientSupportsNoAuth = typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined' &&
+								acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED],
 							next = connect,
-							noAuth = !basicAuth &&
-								typeof acceptedMethods[0] !== 'undefined' &&
-								acceptedMethods[0],
-							responseBuffer = Buffer.allocUnsafe(2);
+							responseBuffer = Buffer.allocUnsafe(2),
+							serverSupportsGss = Boolean(self.options.gssapi && self.options.gssapi.enabled && self.options.gssapi.provider);
 
 						// form response Buffer
 						responseBuffer[0] = RFC_1928_VERSION;
 						responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 
-						// check for basic auth configuration
-						if (basicAuth) {
+						// prefer GSSAPI when enabled and mutually supported
+						if (serverSupportsGss && clientSupportsGss) {
+							responseBuffer[1] = RFC_1928_METHODS.GSSAPI;
+							next = gssapi;
+
+						// check for basic auth configuration and mutual support
+						} else if (basicAuth && clientSupportsBasic) {
 							responseBuffer[1] = RFC_1928_METHODS.BASIC_AUTHENTICATION;
 							next = authenticate;
 
-						// if NO AUTHENTICATION REQUIRED and
-						} else if (!basicAuth && noAuth) {
+						// if NO AUTHENTICATION REQUIRED and client supports it
+						} else if (!basicAuth && clientSupportsNoAuth) {
 							responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 							next = connect;
 
@@ -411,10 +512,8 @@ class SocksServer {
 			socket.once('data', handshake);
 
 			// capture socket closure
-			socket.once('end', () => {
-				// remove the session from currently the active sessions list
-				self.activeSessions.splice(self.activeSessions.indexOf(socket), 1);
-			});
+			socket.once('end', removeActiveSession);
+			socket.once('close', removeActiveSession);
 		});
 	}
 }
