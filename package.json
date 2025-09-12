@@ -4,6 +4,7 @@
   "description": "proxies requests ",
   "type": "module",
   "main": "src/socks5.js",
+  "types": "index.d.ts",
   "engine": "node >= 16.0",
   "scripts": {
     "lint": "npx eslint src/**/*.js"

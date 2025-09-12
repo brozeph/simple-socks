@@ -5,6 +5,7 @@
 * Removed gulp dev dependency
 * Updated eslint dependency
 * Updated examples to resolve minor lint issues
+* Added typescript definitions to package (addresses [#57](https://github.com/brozeph/simple-socks/issues/57))
 
 ## v3.1.0 - 2022/08/08
 
