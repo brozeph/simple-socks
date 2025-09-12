@@ -1,26 +1,36 @@
 import dns from 'dns';
 import socks5 from '../src/socks5.js';
 
-const server = socks5.createServer({
-	connectionFilter : function (destination, origin, callback) {
-		console.log('Attempting to connect to...');
-		console.log(destination);
-		console.log();
-		console.log('Inbound origin of request is...');
-		console.log(origin);
+const 
+	port = 1080,
+	server = socks5.createServer({
+		connectionFilter (destination, origin, callback) {
+			console.log('Attempting to connect to...');
+			console.log(destination);
+			console.log();
+			console.log('Inbound origin of request is...');
+			console.log(origin);
 
-		return dns.reverse(destination.address, function (err, hostnames) {
-			if (!hostnames || !hostnames.length || !/github/.test(hostnames[0])) {
-				console.log('Not allowing connection to %s:%s', destination.address, destination.port);
+			return dns.reverse(destination.address, function (err, hostnames) {
+				if (err) {
+					console.error('DNS reverse lookup failed for %s', destination.address);
+					console.error(err);
 
-				return callback(new Error('connection to destination address is denied (only github is allowed)'));
-			}
+					// if the reverse lookup fails, we just deny the connection
+					return callback(new Error('connection to destination address is denied (only github is allowed)'));
+				}
 
-			return callback();
-		});
+				if (!hostnames || !hostnames.length || !/github/.test(hostnames[0])) {
+					console.log('Not allowing connection to %s:%s', destination.address, destination.port);
 
-	}
-});
+					return callback(new Error('connection to destination address is denied (only github is allowed)'));
+				}
+
+				return callback();
+			});
+
+		}
+	});
 
 server.on('connectionFilter', function (destination, origin, err) {
 	console.log('connection to %s:%s has been denied (only requests to github are allowed)', destination.address, destination.port);
@@ -28,4 +38,4 @@ server.on('connectionFilter', function (destination, origin, err) {
 });
 
 // start listening!
-server.listen(1080);
+server.listen(port);

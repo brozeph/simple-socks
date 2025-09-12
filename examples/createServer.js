@@ -1,9 +1,11 @@
 import socks5 from '../src/socks5.js';
 
-const server = socks5.createServer();
+const 
+	port = 1080,
+	server = socks5.createServer();
 
 // start listening!
-server.listen(1080);
+server.listen(port);
 
 server.on('handshake', function (socket) {
 	console.log();
