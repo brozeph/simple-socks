@@ -131,7 +131,7 @@ This method accepts an optional `options` argument:
 * `options.authentication` - A callback for authentication
 * `options.connectionFilter` - A callback for connection filtering
 
-#### authentication
+#### authentication callback
 
 To make the socks5 server require username/password authentication, supply a function callback in the options as follows:
 
@@ -161,7 +161,7 @@ The `authenticate` callback accepts three arguments:
 * socket - the socket for the client connection
 * callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
 
-#### connectionFilter
+#### connectionFilter callback
 
 Allows you to filter incoming connections, based on either origin and/or destination, return `false` to disallow:
 
@@ -422,3 +422,12 @@ server.on('proxyEnd', function (response, args) {
   console.log(args);
 });
 ```
+
+## macOS Authentication Notes
+
+Some versions of the macOS built‑in SOCKS client (used when enabling a SOCKS proxy in Network settings) do not correctly implement RFC 1929 username/password authentication. They may not advertise BASIC (0x02) during method negotiation, or send a zero‑length password during the RFC 1929 sub‑negotiation.
+
+* The server selects BASIC only when the client advertises support for it. If `authenticate` is configured but the client does not offer BASIC, the server responds with “no acceptable methods” and closes.
+* If a client sends a zero‑length username or password during RFC 1929 authentication, the server rejects the authentication.
+
+If you require username/password auth from macOS clients, use a client that supports RFC 1929 (for example, `curl --socks5 --proxy-user`, or browsers/extensions that implement SOCKS5 BASIC). Alternatively, consider a different method such as GSSAPI/Negotiate on both client and server; the built‑in macOS client may favor that, but it is not implemented by this library.

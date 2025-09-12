@@ -75,6 +75,11 @@ class SocksServer {
 							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
 						}
 
+						// per RFC 1929, username and password lengths must be 1..255
+						if (!args.ulen || !args.plen) {
+							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
+						}
+
 						authDomain.on('error', (err) => {
 							// emit failed authentication event
 							self.server.emit(
@@ -371,23 +376,24 @@ class SocksServer {
 								return methods;
 							}, {}),
 							basicAuth = typeof self.options.authenticate === 'function',
+							clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined' &&
+								acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION],
+							clientSupportsNoAuth = typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined' &&
+								acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED],
 							next = connect,
-							noAuth = !basicAuth &&
-								typeof acceptedMethods[0] !== 'undefined' &&
-								acceptedMethods[0],
 							responseBuffer = Buffer.allocUnsafe(2);
 
 						// form response Buffer
 						responseBuffer[0] = RFC_1928_VERSION;
 						responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 
-						// check for basic auth configuration
-						if (basicAuth) {
+						// check for basic auth configuration and mutual support
+						if (basicAuth && clientSupportsBasic) {
 							responseBuffer[1] = RFC_1928_METHODS.BASIC_AUTHENTICATION;
 							next = authenticate;
 
-						// if NO AUTHENTICATION REQUIRED and
-						} else if (!basicAuth && noAuth) {
+						// if NO AUTHENTICATION REQUIRED and client supports it
+						} else if (!basicAuth && clientSupportsNoAuth) {
 							responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 							next = connect;
 
