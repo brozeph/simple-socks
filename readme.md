@@ -156,6 +156,7 @@ This method accepts an optional `options` argument:
 
 * `options.authentication` - A callback for authentication
 * `options.connectionFilter` - A callback for connection filtering
+* `options.idleTimeout` - Milliseconds of inactivity before destroying client/destination sockets (0 is disabled, default 0)
 
 #### authentication callback
 

@@ -29,6 +29,8 @@ export type ConnectionFilterFn = (
 export interface Options {
   authenticate?: AuthenticateFn;
   connectionFilter?: ConnectionFilterFn;
+  // Destroy sockets after this many ms of inactivity. 0 disables timeout.
+  idleTimeout?: number;
   gssapi?: {
     enabled: boolean;
     // Phase 1 pluggable provider. If absent, GSSAPI is not selected.

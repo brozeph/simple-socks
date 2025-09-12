@@ -122,4 +122,39 @@ await test('gssapi selection with dummy provider', async () => {
   await closeServer(echo.server);
 });
 
+await test('activeSessions returns to 0 after idle timeout', async () => {
+  const echo = await createEchoServer();
+  // Use the class to access activeSessions
+  const serverImpl = new socks5.SocksServer({ idleTimeout: 50 });
+  const app = serverImpl.server;
+  await new Promise((resolve) => app.listen(0, '127.0.0.1', resolve));
+  const addr = app.address();
+
+  const client = await connectTo(addr.port, addr.address);
+  // Offer no-auth
+  client.write(buildSocks5Handshake(0x00));
+  await readExactly(client, 2); // selection
+
+  // Send CONNECT to echo server
+  client.write(buildSocks5ConnectRequest(echo.host, echo.port));
+  await readExactly(client, 2); // success
+
+  // Wait a tick to ensure session tracking updates
+  await new Promise((r) => setTimeout(r, 10));
+  if (serverImpl.activeSessions.length !== 1) {
+    throw new Error(`expected activeSessions=1, got ${serverImpl.activeSessions.length}`);
+  }
+
+  // Now wait longer than idleTimeout; sockets should time out and be destroyed
+  await new Promise((r) => setTimeout(r, 120));
+
+  if (serverImpl.activeSessions.length !== 0) {
+    throw new Error(`expected activeSessions=0 after timeout, got ${serverImpl.activeSessions.length}`);
+  }
+
+  client.destroy();
+  await closeServer(app);
+  await closeServer(echo.server);
+});
+
 // Exit non-zero on failures (handled in test wrapper)

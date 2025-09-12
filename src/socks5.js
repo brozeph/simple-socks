@@ -40,10 +40,30 @@ class SocksServer {
 
 		this.activeSessions = [];
 		this.options = options || {};
+		this.idleTimeout = this.options.idleTimeout || 0;
 		this.server = net.createServer((socket) => {
 			socket.on('error', (err) => {
 				self.server.emit(EVENTS.PROXY_ERROR, err);
 			});
+
+			// configure idle timeout for client socket
+			if (self.idleTimeout && typeof socket.setTimeout === 'function') {
+				socket.setTimeout(self.idleTimeout, () => {
+					try {
+						socket.destroy(new Error('socket idle timeout'));
+					} catch (e) {
+						// ignore socket destroy errors
+					}
+				});
+			}
+
+			// helper to safely remove from active sessions
+			function removeActiveSession () {
+				const idx = self.activeSessions.indexOf(socket);
+				if (idx !== -1) {
+					self.activeSessions.splice(idx, 1);
+				}
+			}
 
 			/**
 			 * +----+------+----------+------+----------+
@@ -289,6 +309,38 @@ class SocksServer {
 													// listen for data bi-directionally
 													destination.pipe(socket);
 													socket.pipe(destination);
+
+													// configure idle timeout for destination socket
+													if (self.idleTimeout && typeof destination.setTimeout === 'function') {
+														destination.setTimeout(self.idleTimeout, () => {
+															try {
+																destination.destroy(new Error('destination idle timeout')); 
+															} catch (e) {
+																// ignore errors		
+															}
+														});
+													}
+
+													// ensure proper teardown when either side ends/closes/errors
+													const teardownDestination = () => {
+														try { 
+															destination.destroy(); 
+														} catch (e) {
+															// ignore socket destroy errors
+														}
+													};
+													const teardownSocket = () => {
+														try { 
+															socket.destroy(); 
+														} catch (e) {
+															// ignore socket destroy errors
+														}
+													};
+
+													socket.once('close', teardownDestination);
+													socket.once('end', teardownDestination);
+													socket.once('error', teardownDestination);
+													destination.once('error', teardownSocket);
 												});
 											}),
 										destinationInfo = {
@@ -460,10 +512,8 @@ class SocksServer {
 			socket.once('data', handshake);
 
 			// capture socket closure
-			socket.once('end', () => {
-				// remove the session from currently the active sessions list
-				self.activeSessions.splice(self.activeSessions.indexOf(socket), 1);
-			});
+			socket.once('end', removeActiveSession);
+			socket.once('close', removeActiveSession);
 		});
 	}
 }

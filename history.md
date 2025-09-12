@@ -9,6 +9,7 @@
 * Added examples/createMultipleServers.js to demonstrate running multiple servers on same port bound to different interfaces (reference to [#47](https://github.com/brozeph/simple-socks/issues/47))
 * Tightened up BASIC authentication to reject zero-length usernames or passwords (in response to [#30](https://github.com/brozeph/simple-socks/issues/30))
 * Added extension to support delegation of GSSAPI/Negotiate authentication (experimental, off by default)
+* Resolved issue where sockets could be destroyed without being removed from activeSessions causing sockets to linger (addresses [#62](https://github.com/brozeph/simple-socks/issues/62))
 
 ## v3.1.0 - 2022/08/08
 
