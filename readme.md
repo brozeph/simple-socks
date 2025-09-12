@@ -6,7 +6,7 @@ Creates a simple SOCKS5 server and exposes additional SOCKS5 proxy events.
 
 ## Installation
 
-```
+```bash
 npm install simple-socks
 ```
 
