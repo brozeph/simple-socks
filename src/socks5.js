@@ -294,9 +294,9 @@ class SocksServer {
 								},
 								connectionFilterDomain.intercept(() => {
 									const destination = net.createConnection(
-											args.dst.port,
-											args.dst.addr,
-											() => {
+										args.dst.port,
+										args.dst.addr,
+										() => {
 												// prepare a success response
 												const responseBuffer = Buffer.alloc(args.requestBuffer.length);
 												args.requestBuffer.copy(responseBuffer);
@@ -340,16 +340,16 @@ class SocksServer {
 													socket.once('error', teardownDestination);
 													destination.once('error', teardownSocket);
 												});
-											},
-										),
-										destinationInfo = {
-											address: args.dst.addr,
-											port: args.dst.port,
 										},
-										originInfo = {
-											address: socket.remoteAddress,
-											port: socket.remotePort,
-										};
+									);
+									const destinationInfo = {
+										address: args.dst.addr,
+										port: args.dst.port,
+									};
+									const originInfo = {
+										address: socket.remoteAddress,
+										port: socket.remotePort,
+									};
 
 									// capture successful connection
 									destination.on('connect', () => {
