@@ -1,12 +1,40 @@
-name: Tests
-on: [push, pull_request]
+name: CI
+
+on:
+  push:
+  pull_request:
+
 env:
   CI: true
 
 jobs:
+  quality:
+    name: Quality (Node 22 on ubuntu)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run lint
+        run: npm run lint
+
   test:
     name: Node ${{ matrix.node }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: quality
 
     strategy:
       fail-fast: false
@@ -15,36 +43,45 @@ jobs:
         os: [ubuntu-latest, windows-latest]
 
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set Node.js version
-        uses: actions/setup-node@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: npm
 
       - name: Install npm dependencies
-        run: npm install # switch to `npm ci` when Node.js 6 support is dropped
-
-#      - name: Run lint
-#        run: npm run lint
+        run: npm ci
 
       - name: Run tests
-        run: npm run lint && npm test
+        run: npm test
 
-#      - name: Coveralls
-#        uses: coverallsapp/github-action@master
-#        with:
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
-#          flag-name: ${{matrix.os}}-node-${{ matrix.node }}
-#          parallel: true
-
-  finish:
-    needs: test
+  coverage:
+    name: Coverage (Node 22 on ubuntu)
     runs-on: ubuntu-latest
-#    steps:
-#      - name: Coveralls Finished
-#        uses: coverallsapp/github-action@master
-#        with:
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
-#          parallel-finished: true
+    needs: [quality, test]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Generate coverage report
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true

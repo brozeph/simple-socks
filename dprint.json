@@ -1,0 +1,18 @@
+{
+  "includes": [
+    "**/*.{ts,tsx,js,jsx}"
+  ],
+  "excludes": [
+    "**/node_modules",
+    "**/dist",
+    "**/coverage"
+  ],
+  "plugins": [
+    "https://plugins.dprint.dev/typescript-0.95.11.wasm"
+  ],
+  "typescript": {
+    "quoteStyle": "preferSingle",
+    "semiColons": "always",
+    "useTabs": true
+  }
+}

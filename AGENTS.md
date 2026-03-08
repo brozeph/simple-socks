@@ -1,48 +1,57 @@
-# AGENTS.md for node-chess
+# AGENTS.md for simple-socks
 
 ## Project Overview
 
-This is a Node.js library for calculating chess moves.
+This repository is a Node.js SOCKS5 server library (`simple-socks`) with example servers and a small integration-style test suite.
 
-## Build and Test Commands
+## Build, Lint, Format, and Test Commands
 
-**Installation:**
+**Install dependencies:**
 
-- Use `npm install` at the project root to install all dependencies.
+- `npm ci` (preferred in CI and reproducible local installs)
+- `npm install` (acceptable for local development)
 
-**Development:**
+**Formatting:**
 
-- Please alphabetize imports and variables.
-- Use camelCase for variable and function names.
-- Follow the existing code style and conventions.
+- `npm run format` to apply formatting (`dprint fmt`)
+- `npm run format:check` to verify formatting (`dprint check`)
 
-**Testing:**
+**Linting:**
 
-- Run the full test suite for all packages: `npm run test`
-- All code changes must pass the entire test suite before merging.
-- Run the linter: `npm run lint`
-- All linting issues must be resolved before merging.
+- `npm run lint` to run ESLint flat-config checks on `src`, `examples`, and `test`
 
-## Coding Conventions and Style
+**Tests:**
 
-- **Linting:** We use ESLint with the Airbnb style guide for TypeScript. Run `npm run lint` to check for style and coding errors.
-- **Naming:**
-  - Components and files use PascalCase (e.g., `Button.tsx`).
-  - Functions and variables use camelCase (e.g., `getUsers`).
-  - Constants use screaming snake case (e.g., `API_ENDPOINT`).
-- **TypeScript:** Use strict mode and explicitly type all function arguments and returns. Avoid using `any`.
-- **Comments:**
-  - Use JSDoc style comments for all functions and classes. Include parameter and return types.
-  - Use inline comments sparingly to explain complex logic. Start inline comments with a lower case letter and do not end with a period.
+- `npm run test` to run the test suite
+- `npm run test:coverage` to generate text + lcov coverage output via `c8`
 
-## Testing Guidelines
+## CI Expectations
 
-## PR Instructions
+GitHub Actions workflow: `.github/workflows/test.yml`
 
-- **Commit Messages:** Follow the Conventional Commits specification (e.g., `feat:`, `fix:`, `docs:`) to ensure changelogs are generated correctly.
-- **Pre-Commit Checks:** Always run `npm run build`, `npm run lint` and `npm run test` before committing your code.
+- `quality` job runs formatting and lint checks
+- matrix `test` job runs tests on Node `18`, `20`, and `22` across Linux/Windows
+- `coverage` job generates lcov and uploads to Codecov
+- coverage upload expects `CODECOV_TOKEN` to be configured in repository secrets
 
-## Security Considerations
+All changes should pass:
 
-- **Secrets:** Never hard-code API keys, credentials, or other sensitive information.
-- **Dependencies:** All dependencies must be vetted and installed via `npm`. No manual installations.
+1. `npm run format:check`
+2. `npm run lint`
+3. `npm run test`
+4. `npm run test:coverage` (when changing CI/coverage behavior)
+
+## Coding Conventions
+
+- Keep imports alphabetized when practical.
+- Use camelCase for variables and functions.
+- Prefer `const` unless reassignment is required.
+- Use ESM module syntax.
+- Keep comments concise and focused on non-obvious behavior.
+- Follow existing patterns in `src/socks5.js` and examples.
+
+## Security and Dependency Rules
+
+- Never commit secrets or credentials.
+- Add/update dependencies via `npm` only.
+- Keep dependency and lockfile changes intentional and reviewable.

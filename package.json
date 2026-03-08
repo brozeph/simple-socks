@@ -7,8 +7,11 @@
   "types": "index.d.ts",
   "engine": "node >= 16.0",
   "scripts": {
-    "lint": "npx eslint \"src/**/*.js\" \"examples/**/*.js\"",
-    "test": "node test/index.js"
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "lint": "eslint \"src/**/*.js\" \"examples/**/*.js\" \"test/**/*.js\"",
+    "test": "node test/index.js",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node test/index.js"
   },
   "author": "https://github.com/brozeph",
   "contributors": [
@@ -37,7 +40,11 @@
     "url": "http://github.com/brozeph/simple-socks/issues"
   },
   "devDependencies": {
-    "eslint": "^8.57.1"
+    "@eslint/js": "^10.0.1",
+    "c8": "^11.0.0",
+    "dprint": "^0.52.0",
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0"
   },
   "dependencies": {
     "binary": "^0.3.0"

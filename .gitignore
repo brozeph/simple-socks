@@ -5,3 +5,4 @@ npm-debug.log
 lib-cov
 node_modules
 reports
+coverage
