@@ -2,7 +2,11 @@
 
 Creates a simple SOCKS5 server and exposes additional SOCKS5 proxy events.
 
-[![Build Status](https://travis-ci.org/brozeph/simple-socks.svg?branch=master)](https://travis-ci.org/brozeph/simple-socks)
+[![CI](https://github.com/brozeph/simple-socks/actions/workflows/test.yml/badge.svg)](https://github.com/brozeph/simple-socks/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/brozeph/simple-socks/graph/badge.svg)](https://codecov.io/gh/brozeph/simple-socks)
+[![npm version](https://img.shields.io/npm/v/simple-socks.svg)](https://www.npmjs.com/package/simple-socks)
+[![license](https://img.shields.io/npm/l/simple-socks.svg)](./LICENSE)
+[![node](https://img.shields.io/node/v/simple-socks.svg)](https://www.npmjs.com/package/simple-socks)
 
 ## Installation
 
