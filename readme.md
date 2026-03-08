@@ -180,6 +180,7 @@ This method accepts an optional `options` argument:
 - `options.authentication` - A callback for authentication
 - `options.connectionFilter` - A callback for connection filtering
 - `options.idleTimeout` - Milliseconds of inactivity before destroying client/destination sockets (0 is disabled, default 0)
+- `options.compatAuth` - Non-default RFC 1929 compatibility controls for empty credentials (defaults are strict)
 
 #### authentication callback
 
@@ -210,6 +211,40 @@ The `authenticate` callback accepts three arguments:
 - password - password of the proxy user
 - socket - the socket for the client connection
 - callback - callback for authentication... if authentication is successful, the callback should be called with no arguments
+
+#### compatAuth options
+
+`compatAuth` is optional and disabled by default. It only affects RFC 1929 username/password payload validation.
+
+```javascript
+const server = socks5.createServer({
+  authenticate(username, password, socket, callback) {
+    if (username === "foo" && password === "") {
+      return setImmediate(callback);
+    }
+
+    return setImmediate(callback, new Error("bad credentials"));
+  },
+  compatAuth: {
+    allowEmptyUsername: false, // default false
+    allowEmptyPassword: true, // default false
+    strictMethodNegotiation: true, // must remain true
+  },
+});
+```
+
+Behavior:
+
+- `allowEmptyUsername` (default `false`): if true, allows `ULEN=0` and passes `""` to `authenticate`.
+- `allowEmptyPassword` (default `false`): if true, allows `PLEN=0` and passes `""` to `authenticate`.
+- `strictMethodNegotiation` (default `true`): keeps RFC 1928 method selection behavior. This library does not support forcing BASIC when a client did not advertise BASIC.
+
+`compatAuth` is not a server equivalent of client flags such as `curl --proxy-user`; proxy credentials are still sent (or not sent) by the client.
+
+- Compatibility fallback only, opt-in, private/trusted environments.
+- Prefer proper RFC1929-capable clients instead.
+- Treat username as a single token, avoid delimiter parsing when possible.
+- Disable or tightly audit username logging.
 
 #### connectionFilter callback
 
@@ -523,5 +558,7 @@ Some versions of the macOS built‑in SOCKS client (used when enabling a SOCKS p
 
 - The server selects BASIC only when the client advertises support for it. If `authenticate` is configured but the client does not offer BASIC, the server responds with “no acceptable methods” and closes.
 - If a client sends a zero‑length username or password during RFC 1929 authentication, the server rejects the authentication.
+- `compatAuth.allowEmptyPassword` and/or `compatAuth.allowEmptyUsername` can relax that validation, but only after BASIC has already been selected.
+- `compatAuth` cannot fix clients that never offer BASIC during method negotiation.
 
 If you require username/password auth from macOS clients, use a client that supports RFC 1929 (for example, `curl --socks5 --proxy-user`, or browsers/extensions that implement SOCKS5 BASIC). Alternatively, consider a different method such as GSSAPI/Negotiate on both client and server; the built‑in macOS client may favor that, but it is not implemented by this library.

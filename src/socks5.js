@@ -38,6 +38,15 @@ class SocksServer {
 
 		this.activeSessions = [];
 		this.options = options || {};
+
+		// compatAuth options
+		this.options.compatAuth = this.options.compatAuth || {};
+		if (this.options.compatAuth.strictMethodNegotiation === false) {
+			throw new Error(
+				'compatAuth.strictMethodNegotiation=false is not supported',
+			);
+		}
+
 		this.idleTimeout = this.options.idleTimeout || 0;
 		this.server = net.createServer((socket) => {
 			socket.on('error', (err) => {
@@ -76,6 +85,14 @@ class SocksServer {
 			function authenticate(buffer) {
 				const authDomain = domain.create();
 
+				const allowEmptyUsername = Boolean(
+					self.options.compatAuth.allowEmptyUsername,
+				);
+
+				const allowEmptyPassword = Boolean(
+					self.options.compatAuth.allowEmptyPassword,
+				);
+
 				binary
 					.stream(buffer)
 					.word8('ver')
@@ -93,7 +110,10 @@ class SocksServer {
 						}
 
 						// per RFC 1929, username and password lengths must be 1..255
-						if (!args.ulen || !args.plen) {
+						if (
+							(!allowEmptyUsername && !args.ulen)
+							|| (!allowEmptyPassword && !args.plen)
+						) {
 							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
 						}
 
@@ -150,7 +170,9 @@ class SocksServer {
 				const provider = self.options.gssapi && self.options.gssapi.provider;
 
 				if (!provider || typeof provider.authenticate !== 'function') {
-					return socket.destroy(new Error('GSSAPI requested but no provider configured'));
+					return socket.destroy(
+						new Error('GSSAPI requested but no provider configured'),
+					);
 				}
 
 				try {
@@ -298,7 +320,9 @@ class SocksServer {
 										args.dst.addr,
 										() => {
 											// prepare a success response
-											const responseBuffer = Buffer.alloc(args.requestBuffer.length);
+											const responseBuffer = Buffer.alloc(
+												args.requestBuffer.length,
+											);
 											args.requestBuffer.copy(responseBuffer);
 											responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
 
@@ -309,10 +333,15 @@ class SocksServer {
 												socket.pipe(destination);
 
 												// configure idle timeout for destination socket
-												if (self.idleTimeout && typeof destination.setTimeout === 'function') {
+												if (
+													self.idleTimeout
+													&& typeof destination.setTimeout === 'function'
+												) {
 													destination.setTimeout(self.idleTimeout, () => {
 														try {
-															destination.destroy(new Error('destination idle timeout'));
+															destination.destroy(
+																new Error('destination idle timeout'),
+															);
 														} catch {
 															// ignore errors
 														}
@@ -354,7 +383,11 @@ class SocksServer {
 									// capture successful connection
 									destination.on('connect', () => {
 										// emit connection event
-										self.server.emit(EVENTS.PROXY_CONNECT, destinationInfo, destination);
+										self.server.emit(
+											EVENTS.PROXY_CONNECT,
+											destinationInfo,
+											destination,
+										);
 
 										// capture and emit proxied connection data
 										destination.on('data', (data) => {
@@ -365,7 +398,12 @@ class SocksServer {
 										// note: this event is only emitted once the destination socket is fully closed
 										destination.on('close', (hadError) => {
 											// indicate client connection end
-											self.server.emit(EVENTS.PROXY_DISCONNECT, originInfo, destinationInfo, hadError);
+											self.server.emit(
+												EVENTS.PROXY_DISCONNECT,
+												originInfo,
+												destinationInfo,
+												hadError,
+											);
 										});
 
 										connectionFilterDomain.exit();
@@ -457,22 +495,28 @@ class SocksServer {
 						}
 
 						// convert methods buffer to an array
-						const acceptedMethods = [].slice.call(args.methods).reduce((methods, method) => {
-							methods[method] = true;
-							return methods;
-						}, {});
+						const acceptedMethods = [].slice
+							.call(args.methods)
+							.reduce((methods, method) => {
+								methods[method] = true;
+								return methods;
+							}, {});
 						const basicAuth = typeof self.options.authenticate === 'function';
-						const clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined'
+						const clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION]
+								!== 'undefined'
 							&& acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION];
 						const clientSupportsGss = typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== 'undefined'
 							&& acceptedMethods[RFC_1928_METHODS.GSSAPI];
-						const clientSupportsNoAuth =
-							typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined'
+						const clientSupportsNoAuth = typeof acceptedMethods[
+									RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED
+								] !== 'undefined'
 							&& acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED];
 						let next = connect;
 						const responseBuffer = Buffer.allocUnsafe(2);
 						const serverSupportsGss = Boolean(
-							self.options.gssapi && self.options.gssapi.enabled && self.options.gssapi.provider,
+							self.options.gssapi
+								&& self.options.gssapi.enabled
+								&& self.options.gssapi.provider,
 						);
 
 						// form response Buffer

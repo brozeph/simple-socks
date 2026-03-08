@@ -15,6 +15,7 @@ This repository is a Node.js SOCKS5 server library (`simple-socks`) with example
 
 - `npm run format` to apply formatting (`dprint fmt`)
 - `npm run format:check` to verify formatting (`dprint check`)
+- After any code edits, do not assume formatting is correct from visual inspection; run `npm run format` and then `npm run format:check` before considering work complete.
 
 **Linting:**
 
@@ -40,6 +41,17 @@ All changes should pass:
 2. `npm run lint`
 3. `npm run test`
 4. `npm run test:coverage` (when changing CI/coverage behavior)
+
+### Quality Gate Checklist (required before handoff)
+
+Use this exact sequence to avoid CI regressions in the `quality` job:
+
+1. `npm run format`
+2. `npm run format:check`
+3. `npm run lint`
+4. `npm run test`
+
+If any file is reformatted in step 1, rerun steps 2-4 before handoff.
 
 ## Coding Conventions
 
