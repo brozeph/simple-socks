@@ -1,9 +1,8 @@
 import socks5 from '../src/socks5.js';
 
-const 
-	port = 1080,
+const port = 1080,
 	server = socks5.createServer({
-		authenticate (username, password, socket, callback) {
+		authenticate(username, password, socket, callback) {
 			// verify username/password
 			if (username !== 'foo' || password !== 'bar') {
 				// respond with auth failure (can be any error)
@@ -12,50 +11,50 @@ const
 
 			// return successful authentication
 			return setImmediate(callback);
-		}
+		},
 	});
 
 // start listening!
 server.listen(port);
 
-server.on('handshake', function () {
+server.on('handshake', function() {
 	console.log();
 	console.log('------------------------------------------------------------');
 	console.log('new client connection');
 });
 
 // When authentication succeeds
-server.on('authenticate', function (username) {
+server.on('authenticate', function(username) {
 	console.log('user %s successfully authenticated!', username);
 });
 
 // When authentication fails
-server.on('authenticateError', function (username, err) {
+server.on('authenticateError', function(username, err) {
 	console.log('user %s failed to authenticate...', username);
 	console.log(err);
 });
 
 // When a reqest arrives for a remote destination
-server.on('proxyConnect', function (info, destination) {
+server.on('proxyConnect', function(info, destination) {
 	console.log('connected to remote server at %s:%d', info.address, info.port);
 
-	destination.on('data', function (data) {
+	destination.on('data', function(data) {
 		console.log(data.length);
 	});
 });
 
-server.on('proxyData', function (data) {
+server.on('proxyData', function(data) {
 	console.log(data.length);
 });
 
 // When an error occurs connecting to remote destination
-server.on('proxyError', function (err) {
+server.on('proxyError', function(err) {
 	console.error('unable to connect to remote server');
 	console.error(err);
 });
 
 // When a proxy connection ends
-server.on('proxyEnd', function (response, args) {
+server.on('proxyEnd', function(response, args) {
 	console.log('socket closed with code %d', response);
 	console.log(args);
 	console.log();

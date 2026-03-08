@@ -5,25 +5,24 @@ import {
 	RFC_1928_REPLIES,
 	RFC_1928_VERSION,
 	RFC_1929_REPLIES,
-	RFC_1929_VERSION
+	RFC_1929_VERSION,
 } from './constants.js';
 
 import binary from 'binary';
 import domain from 'domain';
 import net from 'net';
 
-	// module specific events
-const
-	EVENTS = {
-		AUTHENTICATION : 'authenticate',
-		AUTHENTICATION_ERROR : 'authenticateError',
-		CONNECTION_FILTER : 'connectionFilter',
-		HANDSHAKE : 'handshake',
-		PROXY_CONNECT : 'proxyConnect',
-		PROXY_DATA : 'proxyData',
-		PROXY_DISCONNECT : 'proxyDisconnect',
-		PROXY_END : 'proxyEnd',
-		PROXY_ERROR : 'proxyError'
+// module specific events
+const EVENTS = {
+		AUTHENTICATION: 'authenticate',
+		AUTHENTICATION_ERROR: 'authenticateError',
+		CONNECTION_FILTER: 'connectionFilter',
+		HANDSHAKE: 'handshake',
+		PROXY_CONNECT: 'proxyConnect',
+		PROXY_DATA: 'proxyData',
+		PROXY_DISCONNECT: 'proxyDisconnect',
+		PROXY_END: 'proxyEnd',
+		PROXY_ERROR: 'proxyError',
 	},
 	LENGTH_RFC_1928_ATYP = 4;
 
@@ -32,11 +31,10 @@ const
  *
  * https://www.ietf.org/rfc/rfc1928.txt - NO_AUTH SOCKS5
  * https://www.ietf.org/rfc/rfc1929.txt - USERNAME/PASSWORD SOCKS5
- *
- **/
+ */
 class SocksServer {
-	constructor (options) {
-		let self = this;
+	constructor(options) {
+		const self = this;
 
 		this.activeSessions = [];
 		this.options = options || {};
@@ -51,14 +49,14 @@ class SocksServer {
 				socket.setTimeout(self.idleTimeout, () => {
 					try {
 						socket.destroy(new Error('socket idle timeout'));
-					} catch (e) {
+					} catch {
 						// ignore socket destroy errors
 					}
 				});
 			}
 
 			// helper to safely remove from active sessions
-			function removeActiveSession () {
+			function removeActiveSession() {
 				const idx = self.activeSessions.indexOf(socket);
 				if (idx !== -1) {
 					self.activeSessions.splice(idx, 1);
@@ -72,12 +70,11 @@ class SocksServer {
 			 * | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
 			 * +----+------+----------+------+----------+
 			 *
-			 *
 			 * @param {Buffer} buffer - a buffer
 			 * @returns {undefined}
-			 **/
-			function authenticate (buffer) {
-				let authDomain = domain.create();
+			 */
+			function authenticate(buffer) {
+				const authDomain = domain.create();
 
 				binary
 					.stream(buffer)
@@ -105,7 +102,8 @@ class SocksServer {
 							self.server.emit(
 								EVENTS.AUTHENTICATION_ERROR,
 								args.uname.toString(),
-								err);
+								err,
+							);
 
 							// respond with auth failure
 							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
@@ -121,7 +119,7 @@ class SocksServer {
 								self.server.emit(EVENTS.AUTHENTICATION, args.uname.toString());
 
 								// respond with success...
-								let responseBuffer = Buffer.allocUnsafe(2);
+								const responseBuffer = Buffer.allocUnsafe(2);
 								responseBuffer[0] = RFC_1929_VERSION;
 								responseBuffer[1] = RFC_1929_REPLIES.SUCCEEDED;
 
@@ -130,7 +128,8 @@ class SocksServer {
 									// now listen for more details
 									socket.once('data', connect);
 								});
-						}));
+							}),
+						);
 					});
 			}
 
@@ -146,9 +145,9 @@ class SocksServer {
 			 *
 			 * @param {Buffer} buffer - first data chunk for GSS-API negotiation
 			 * @returns {undefined}
-			 **/
-			function gssapi (buffer) {
-				let provider = self.options.gssapi && self.options.gssapi.provider;
+			 */
+			function gssapi(buffer) {
+				const provider = self.options.gssapi && self.options.gssapi.provider;
 
 				if (!provider || typeof provider.authenticate !== 'function') {
 					return socket.destroy(new Error('GSSAPI requested but no provider configured'));
@@ -178,9 +177,9 @@ class SocksServer {
 			 *
 			 * @param {Buffer} buffer - a buffer
 			 * @returns {undefined}
-			 **/
-			function connect (buffer) {
-				let binaryStream = binary.stream(buffer);
+			 */
+			function connect(buffer) {
+				const binaryStream = binary.stream(buffer);
 
 				binaryStream
 					.word8('ver')
@@ -210,7 +209,7 @@ class SocksServer {
 									args.dst.addr = [].slice.call(args.addr.buf).join('.');
 								});
 
-						// domain name
+							// domain name
 						} else if (args.atyp === RFC_1928_ATYP.DOMAINNAME) {
 							binaryStream
 								.word8('addr.size')
@@ -219,7 +218,7 @@ class SocksServer {
 									args.dst.addr = args.addr.buf.toString();
 								});
 
-						// ipv6
+							// ipv6
 						} else if (args.atyp === RFC_1928_ATYP.IPV6) {
 							binaryStream
 								.word32be('addr.a')
@@ -236,14 +235,14 @@ class SocksServer {
 										// convert DWORD to two WORD values and append
 										/* eslint no-magic-numbers : 0 */
 										args.dst.addr.push((x >>> 16).toString(16));
-										args.dst.addr.push(((x & 0xffff)).toString(16));
+										args.dst.addr.push((x & 0xffff).toString(16));
 									});
 
 									// format ipv6 address as string
 									args.dst.addr = args.dst.addr.join(':');
 								});
 
-						// unsupported address type
+							// unsupported address type
 						} else {
 							return end(RFC_1928_REPLIES.ADDRESS_TYPE_NOT_SUPPORTED, args);
 						}
@@ -251,9 +250,8 @@ class SocksServer {
 					.word16bu('dst.port')
 					.tap((args) => {
 						if (args.cmd === RFC_1928_COMMANDS.CONNECT) {
-							let
-								connectionFilter = self.options.connectionFilter,
-								connectionFilterDomain = domain.create();
+							let connectionFilter = self.options.connectionFilter;
+							const connectionFilterDomain = domain.create();
 
 							// if no connection filter is provided, stub one
 							if (!connectionFilter || typeof connectionFilter !== 'function') {
@@ -267,15 +265,16 @@ class SocksServer {
 									EVENTS.CONNECTION_FILTER,
 									// destination
 									{
-										address : args.dst.addr,
-										port : args.dst.port
+										address: args.dst.addr,
+										port: args.dst.port,
 									},
 									// origin
 									{
-										address : socket.remoteAddress,
-										port : socket.remotePort
+										address: socket.remoteAddress,
+										port: socket.remotePort,
 									},
-									err);
+									err,
+								);
 
 								// respond with failure
 								return end(RFC_1928_REPLIES.CONNECTION_NOT_ALLOWED, args);
@@ -285,22 +284,21 @@ class SocksServer {
 							return connectionFilter(
 								// destination
 								{
-									address : args.dst.addr,
-									port : args.dst.port
+									address: args.dst.addr,
+									port: args.dst.port,
 								},
 								// origin
 								{
-									address : socket.remoteAddress,
-									port : socket.remotePort
+									address: socket.remoteAddress,
+									port: socket.remotePort,
 								},
 								connectionFilterDomain.intercept(() => {
-									let
-										destination = net.createConnection(
+									const destination = net.createConnection(
 											args.dst.port,
 											args.dst.addr,
 											() => {
 												// prepare a success response
-												let responseBuffer = Buffer.alloc(args.requestBuffer.length);
+												const responseBuffer = Buffer.alloc(args.requestBuffer.length);
 												args.requestBuffer.copy(responseBuffer);
 												responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
 
@@ -314,25 +312,25 @@ class SocksServer {
 													if (self.idleTimeout && typeof destination.setTimeout === 'function') {
 														destination.setTimeout(self.idleTimeout, () => {
 															try {
-																destination.destroy(new Error('destination idle timeout')); 
-															} catch (e) {
-																// ignore errors		
+																destination.destroy(new Error('destination idle timeout'));
+															} catch {
+																// ignore errors
 															}
 														});
 													}
 
 													// ensure proper teardown when either side ends/closes/errors
 													const teardownDestination = () => {
-														try { 
-															destination.destroy(); 
-														} catch (e) {
+														try {
+															destination.destroy();
+														} catch {
 															// ignore socket destroy errors
 														}
 													};
 													const teardownSocket = () => {
-														try { 
-															socket.destroy(); 
-														} catch (e) {
+														try {
+															socket.destroy();
+														} catch {
 															// ignore socket destroy errors
 														}
 													};
@@ -342,14 +340,15 @@ class SocksServer {
 													socket.once('error', teardownDestination);
 													destination.once('error', teardownSocket);
 												});
-											}),
+											},
+										),
 										destinationInfo = {
-											address : args.dst.addr,
-											port : args.dst.port
+											address: args.dst.addr,
+											port: args.dst.port,
 										},
 										originInfo = {
-											address : socket.remoteAddress,
-											port : socket.remotePort
+											address: socket.remoteAddress,
+											port: socket.remotePort,
 										};
 
 									// capture successful connection
@@ -394,7 +393,8 @@ class SocksServer {
 
 										return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
 									});
-								}));
+								}),
+							);
 						} else {
 							// bind and udp associate commands
 							return end(RFC_1928_REPLIES.SUCCEEDED, args);
@@ -412,13 +412,13 @@ class SocksServer {
 			 * @param {Buffer} response - a buffer representing the response
 			 * @param {object} args - arguments to supply to the proxy end event
 			 * @returns {undefined}
-			 **/
-			function end (response, args) {
+			 */
+			function end(response, args) {
 				// either use the raw buffer (if available) or create a new one
-				let responseBuffer = args.requestBuffer || Buffer.allocUnsafe(2);
+				const responseBuffer = args.requestBuffer || Buffer.allocUnsafe(2);
 
 				if (!args.requestBuffer) {
-					responseBuffer[0] = (RFC_1928_VERSION);
+					responseBuffer[0] = RFC_1928_VERSION;
 				}
 
 				responseBuffer[1] = response;
@@ -426,7 +426,7 @@ class SocksServer {
 				// respond then end the connection
 				try {
 					socket.end(responseBuffer);
-				} catch (ex) {
+				} catch {
 					socket.destroy();
 				}
 
@@ -443,8 +443,8 @@ class SocksServer {
 			 *
 			 * @param {Buffer} buffer - a buffer
 			 * @returns {undefined}
-			 **/
-			function handshake (buffer) {
+			 */
+			function handshake(buffer) {
 				binary
 					.stream(buffer)
 					.word8('ver')
@@ -457,21 +457,23 @@ class SocksServer {
 						}
 
 						// convert methods buffer to an array
-						let
-							acceptedMethods = [].slice.call(args.methods).reduce((methods, method) => {
-								methods[method] = true;
-								return methods;
-							}, {}),
-							basicAuth = typeof self.options.authenticate === 'function',
-							clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined' &&
-								acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION],
-							clientSupportsGss = typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== 'undefined' &&
-								acceptedMethods[RFC_1928_METHODS.GSSAPI],
-							clientSupportsNoAuth = typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined' &&
-								acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED],
-							next = connect,
-							responseBuffer = Buffer.allocUnsafe(2),
-							serverSupportsGss = Boolean(self.options.gssapi && self.options.gssapi.enabled && self.options.gssapi.provider);
+						const acceptedMethods = [].slice.call(args.methods).reduce((methods, method) => {
+							methods[method] = true;
+							return methods;
+						}, {});
+						const basicAuth = typeof self.options.authenticate === 'function';
+						const clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined'
+							&& acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION];
+						const clientSupportsGss = typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== 'undefined'
+							&& acceptedMethods[RFC_1928_METHODS.GSSAPI];
+						const clientSupportsNoAuth =
+							typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined'
+							&& acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED];
+						let next = connect;
+						const responseBuffer = Buffer.allocUnsafe(2);
+						const serverSupportsGss = Boolean(
+							self.options.gssapi && self.options.gssapi.enabled && self.options.gssapi.provider,
+						);
 
 						// form response Buffer
 						responseBuffer[0] = RFC_1928_VERSION;
@@ -482,17 +484,17 @@ class SocksServer {
 							responseBuffer[1] = RFC_1928_METHODS.GSSAPI;
 							next = gssapi;
 
-						// check for basic auth configuration and mutual support
+							// check for basic auth configuration and mutual support
 						} else if (basicAuth && clientSupportsBasic) {
 							responseBuffer[1] = RFC_1928_METHODS.BASIC_AUTHENTICATION;
 							next = authenticate;
 
-						// if NO AUTHENTICATION REQUIRED and client supports it
+							// if NO AUTHENTICATION REQUIRED and client supports it
 						} else if (!basicAuth && clientSupportsNoAuth) {
 							responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 							next = connect;
 
-						// basic auth callback not provided and no auth is not supported
+							// basic auth callback not provided and no auth is not supported
 						} else {
 							return end(RFC_1928_METHODS.NO_ACCEPTABLE_METHODS, args);
 						}
@@ -521,8 +523,8 @@ class SocksServer {
 export default {
 	SocksServer,
 	createServer: (options) => {
-		let socksServer = new SocksServer(options);
+		const socksServer = new SocksServer(options);
 		return socksServer.server;
 	},
-	events: EVENTS
-}
+	events: EVENTS,
+};
