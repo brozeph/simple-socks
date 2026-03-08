@@ -5,8 +5,8 @@
 // - Keytab accessible to the process (if required by your Kerberos setup)
 // - npm install kerberos
 
-import createKerberosProvider from './gssapiKerberosProvider.js';
 import socks5 from '../src/socks5.js';
+import createKerberosProvider from './gssapiKerberosProvider.js';
 
 const port = 1080;
 

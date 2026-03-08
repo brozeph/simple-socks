@@ -297,49 +297,49 @@ class SocksServer {
 										args.dst.port,
 										args.dst.addr,
 										() => {
-												// prepare a success response
-												const responseBuffer = Buffer.alloc(args.requestBuffer.length);
-												args.requestBuffer.copy(responseBuffer);
-												responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
+											// prepare a success response
+											const responseBuffer = Buffer.alloc(args.requestBuffer.length);
+											args.requestBuffer.copy(responseBuffer);
+											responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
 
-												// write acknowledgement to client...
-												socket.write(responseBuffer, () => {
-													// listen for data bi-directionally
-													destination.pipe(socket);
-													socket.pipe(destination);
+											// write acknowledgement to client...
+											socket.write(responseBuffer, () => {
+												// listen for data bi-directionally
+												destination.pipe(socket);
+												socket.pipe(destination);
 
-													// configure idle timeout for destination socket
-													if (self.idleTimeout && typeof destination.setTimeout === 'function') {
-														destination.setTimeout(self.idleTimeout, () => {
-															try {
-																destination.destroy(new Error('destination idle timeout'));
-															} catch {
-																// ignore errors
-															}
-														});
+												// configure idle timeout for destination socket
+												if (self.idleTimeout && typeof destination.setTimeout === 'function') {
+													destination.setTimeout(self.idleTimeout, () => {
+														try {
+															destination.destroy(new Error('destination idle timeout'));
+														} catch {
+															// ignore errors
+														}
+													});
+												}
+
+												// ensure proper teardown when either side ends/closes/errors
+												const teardownDestination = () => {
+													try {
+														destination.destroy();
+													} catch {
+														// ignore socket destroy errors
 													}
+												};
+												const teardownSocket = () => {
+													try {
+														socket.destroy();
+													} catch {
+														// ignore socket destroy errors
+													}
+												};
 
-													// ensure proper teardown when either side ends/closes/errors
-													const teardownDestination = () => {
-														try {
-															destination.destroy();
-														} catch {
-															// ignore socket destroy errors
-														}
-													};
-													const teardownSocket = () => {
-														try {
-															socket.destroy();
-														} catch {
-															// ignore socket destroy errors
-														}
-													};
-
-													socket.once('close', teardownDestination);
-													socket.once('end', teardownDestination);
-													socket.once('error', teardownDestination);
-													destination.once('error', teardownSocket);
-												});
+												socket.once('close', teardownDestination);
+												socket.once('end', teardownDestination);
+												socket.once('error', teardownDestination);
+												destination.once('error', teardownSocket);
+											});
 										},
 									);
 									const destinationInfo = {
