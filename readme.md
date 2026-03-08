@@ -14,6 +14,24 @@ Creates a simple SOCKS5 server and exposes additional SOCKS5 proxy events.
 npm install simple-socks
 ```
 
+## Common Contributor Workflow
+
+For local development in this repository:
+
+```bash
+npm ci
+npm run format
+npm run lint
+npm run test
+npm run test:coverage
+```
+
+Quick checks before opening a PR:
+
+- `npm run format:check`
+- `npm run lint`
+- `npm run test`
+
 ## Example Usage
 
 In the [examples](examples/) folder exists two examples, one that requires no authentication and one that requires username/password authentication. Below is an example with no authentication:
