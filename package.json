@@ -10,7 +10,8 @@
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint \"src/**/*.js\" \"examples/**/*.js\" \"test/**/*.js\"",
-    "test": "node test/index.js"
+    "test": "node test/index.js",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node test/index.js"
   },
   "author": "https://github.com/brozeph",
   "contributors": [
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "c8": "^11.0.0",
     "dprint": "^0.52.0",
     "eslint": "^10.0.3",
     "globals": "^17.4.0"
