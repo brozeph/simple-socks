@@ -1,30 +1,30 @@
 import {
-	RFC_1928_ATYP,
-	RFC_1928_COMMANDS,
-	RFC_1928_METHODS,
-	RFC_1928_REPLIES,
-	RFC_1928_VERSION,
-	RFC_1929_REPLIES,
-	RFC_1929_VERSION,
-} from './constants.js';
+  RFC_1928_ATYP,
+  RFC_1928_COMMANDS,
+  RFC_1928_METHODS,
+  RFC_1928_REPLIES,
+  RFC_1928_VERSION,
+  RFC_1929_REPLIES,
+  RFC_1929_VERSION,
+} from "./constants.js";
 
-import binary from 'binary';
-import domain from 'domain';
-import net from 'net';
+import binary from "binary";
+import domain from "domain";
+import net from "net";
 
 // module specific events
 const EVENTS = {
-		AUTHENTICATION: 'authenticate',
-		AUTHENTICATION_ERROR: 'authenticateError',
-		CONNECTION_FILTER: 'connectionFilter',
-		HANDSHAKE: 'handshake',
-		PROXY_CONNECT: 'proxyConnect',
-		PROXY_DATA: 'proxyData',
-		PROXY_DISCONNECT: 'proxyDisconnect',
-		PROXY_END: 'proxyEnd',
-		PROXY_ERROR: 'proxyError',
-	},
-	LENGTH_RFC_1928_ATYP = 4;
+    AUTHENTICATION: "authenticate",
+    AUTHENTICATION_ERROR: "authenticateError",
+    CONNECTION_FILTER: "connectionFilter",
+    HANDSHAKE: "handshake",
+    PROXY_CONNECT: "proxyConnect",
+    PROXY_DATA: "proxyData",
+    PROXY_DISCONNECT: "proxyDisconnect",
+    PROXY_END: "proxyEnd",
+    PROXY_ERROR: "proxyError",
+  },
+  LENGTH_RFC_1928_ATYP = 4;
 
 /**
  * The following RFCs may be useful as background:
@@ -33,498 +33,546 @@ const EVENTS = {
  * https://www.ietf.org/rfc/rfc1929.txt - USERNAME/PASSWORD SOCKS5
  */
 class SocksServer {
-	constructor(options) {
-		const self = this;
+  constructor(options) {
+    const self = this;
 
-		this.activeSessions = [];
-		this.options = options || {};
-		this.idleTimeout = this.options.idleTimeout || 0;
-		this.server = net.createServer((socket) => {
-			socket.on('error', (err) => {
-				self.server.emit(EVENTS.PROXY_ERROR, err);
-			});
+    this.activeSessions = [];
+    this.options = options || {};
 
-			// configure idle timeout for client socket
-			if (self.idleTimeout && typeof socket.setTimeout === 'function') {
-				socket.setTimeout(self.idleTimeout, () => {
-					try {
-						socket.destroy(new Error('socket idle timeout'));
-					} catch {
-						// ignore socket destroy errors
-					}
-				});
-			}
+    // compatAuth options
+    this.options.compatAuth = this.options.compatAuth || {};
+    if (this.options.compatAuth.strictMethodNegotiation === false) {
+      throw new Error(
+        "compatAuth.strictMethodNegotiation=false is not supported",
+      );
+    }
 
-			// helper to safely remove from active sessions
-			function removeActiveSession() {
-				const idx = self.activeSessions.indexOf(socket);
-				if (idx !== -1) {
-					self.activeSessions.splice(idx, 1);
-				}
-			}
+    this.idleTimeout = this.options.idleTimeout || 0;
+    this.server = net.createServer((socket) => {
+      socket.on("error", (err) => {
+        self.server.emit(EVENTS.PROXY_ERROR, err);
+      });
 
-			/**
-			 * +----+------+----------+------+----------+
-			 * |VER | ULEN |  UNAME   | PLEN |  PASSWD  |
-			 * +----+------+----------+------+----------+
-			 * | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
-			 * +----+------+----------+------+----------+
-			 *
-			 * @param {Buffer} buffer - a buffer
-			 * @returns {undefined}
-			 */
-			function authenticate(buffer) {
-				const authDomain = domain.create();
+      // configure idle timeout for client socket
+      if (self.idleTimeout && typeof socket.setTimeout === "function") {
+        socket.setTimeout(self.idleTimeout, () => {
+          try {
+            socket.destroy(new Error("socket idle timeout"));
+          } catch {
+            // ignore socket destroy errors
+          }
+        });
+      }
 
-				binary
-					.stream(buffer)
-					.word8('ver')
-					.word8('ulen')
-					.buffer('uname', 'ulen')
-					.word8('plen')
-					.buffer('passwd', 'plen')
-					.tap((args) => {
-						// capture the raw buffer
-						args.requestBuffer = buffer;
+      // helper to safely remove from active sessions
+      function removeActiveSession() {
+        const idx = self.activeSessions.indexOf(socket);
+        if (idx !== -1) {
+          self.activeSessions.splice(idx, 1);
+        }
+      }
 
-						// verify version is appropriate
-						if (args.ver !== RFC_1929_VERSION) {
-							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
-						}
+      /**
+       * +----+------+----------+------+----------+
+       * |VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+       * +----+------+----------+------+----------+
+       * | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
+       * +----+------+----------+------+----------+
+       *
+       * @param {Buffer} buffer - a buffer
+       * @returns {undefined}
+       */
+      function authenticate(buffer) {
+        const authDomain = domain.create();
 
-						// per RFC 1929, username and password lengths must be 1..255
-						if (!args.ulen || !args.plen) {
-							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
-						}
+        const allowEmptyUsername = Boolean(
+          self.options.compatAuth.allowEmptyUsername,
+        );
 
-						authDomain.on('error', (err) => {
-							// emit failed authentication event
-							self.server.emit(
-								EVENTS.AUTHENTICATION_ERROR,
-								args.uname.toString(),
-								err,
-							);
+        const allowEmptyPassword = Boolean(
+          self.options.compatAuth.allowEmptyPassword,
+        );
 
-							// respond with auth failure
-							return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
-						});
+        binary
+          .stream(buffer)
+          .word8("ver")
+          .word8("ulen")
+          .buffer("uname", "ulen")
+          .word8("plen")
+          .buffer("passwd", "plen")
+          .tap((args) => {
+            // capture the raw buffer
+            args.requestBuffer = buffer;
 
-						// perform authentication
-						self.options.authenticate(
-							args.uname.toString(),
-							args.passwd.toString(),
-							socket,
-							authDomain.intercept(() => {
-								// emit successful authentication event
-								self.server.emit(EVENTS.AUTHENTICATION, args.uname.toString());
+            // verify version is appropriate
+            if (args.ver !== RFC_1929_VERSION) {
+              return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
+            }
 
-								// respond with success...
-								const responseBuffer = Buffer.allocUnsafe(2);
-								responseBuffer[0] = RFC_1929_VERSION;
-								responseBuffer[1] = RFC_1929_REPLIES.SUCCEEDED;
+            // per RFC 1929, username and password lengths must be 1..255
+            if (
+              (!allowEmptyUsername && !args.ulen) ||
+              (!allowEmptyPassword && !args.plen)
+            ) {
+              return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
+            }
 
-								// respond then listen for cmd and dst info
-								socket.write(responseBuffer, () => {
-									// now listen for more details
-									socket.once('data', connect);
-								});
-							}),
-						);
-					});
-			}
+            authDomain.on("error", (err) => {
+              // emit failed authentication event
+              self.server.emit(
+                EVENTS.AUTHENTICATION_ERROR,
+                args.uname.toString(),
+                err,
+              );
 
-			/**
-			 * RFC 1961 - GSSAPI authentication sub-negotiation.
-			 * Delegates the negotiation to a user-provided provider.
-			 *
-			 * Provider contract:
-			 *   authenticate(socket, firstChunk, callback)
-			 *     - socket: client socket; provider may read/write further frames
-			 *     - firstChunk: Buffer after method selection
-			 *     - callback(err, principal): invoke with error or authenticated principal
-			 *
-			 * @param {Buffer} buffer - first data chunk for GSS-API negotiation
-			 * @returns {undefined}
-			 */
-			function gssapi(buffer) {
-				const provider = self.options.gssapi && self.options.gssapi.provider;
+              // respond with auth failure
+              return end(RFC_1929_REPLIES.GENERAL_FAILURE, args);
+            });
 
-				if (!provider || typeof provider.authenticate !== 'function') {
-					return socket.destroy(new Error('GSSAPI requested but no provider configured'));
-				}
+            // perform authentication
+            self.options.authenticate(
+              args.uname.toString(),
+              args.passwd.toString(),
+              socket,
+              authDomain.intercept(() => {
+                // emit successful authentication event
+                self.server.emit(EVENTS.AUTHENTICATION, args.uname.toString());
 
-				try {
-					provider.authenticate(socket, buffer, (err, principal) => {
-						if (err) {
-							self.server.emit(EVENTS.AUTHENTICATION_ERROR, '', err);
-							return socket.destroy(err);
-						}
+                // respond with success...
+                const responseBuffer = Buffer.allocUnsafe(2);
+                responseBuffer[0] = RFC_1929_VERSION;
+                responseBuffer[1] = RFC_1929_REPLIES.SUCCEEDED;
 
-						self.server.emit(EVENTS.AUTHENTICATION, principal || '');
-						socket.once('data', connect);
-					});
-				} catch (ex) {
-					return socket.destroy(ex);
-				}
-			}
+                // respond then listen for cmd and dst info
+                socket.write(responseBuffer, () => {
+                  // now listen for more details
+                  socket.once("data", connect);
+                });
+              }),
+            );
+          });
+      }
 
-			/**
-			 * +----+-----+-------+------+----------+----------+
-			 * |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
-			 * +----+-----+-------+------+----------+----------+
-			 * | 1  |  1  | X'00' |  1   | Variable |    2     |
-			 * +----+-----+-------+------+----------+----------+
-			 *
-			 * @param {Buffer} buffer - a buffer
-			 * @returns {undefined}
-			 */
-			function connect(buffer) {
-				const binaryStream = binary.stream(buffer);
+      /**
+       * RFC 1961 - GSSAPI authentication sub-negotiation.
+       * Delegates the negotiation to a user-provided provider.
+       *
+       * Provider contract:
+       *   authenticate(socket, firstChunk, callback)
+       *     - socket: client socket; provider may read/write further frames
+       *     - firstChunk: Buffer after method selection
+       *     - callback(err, principal): invoke with error or authenticated principal
+       *
+       * @param {Buffer} buffer - first data chunk for GSS-API negotiation
+       * @returns {undefined}
+       */
+      function gssapi(buffer) {
+        const provider = self.options.gssapi && self.options.gssapi.provider;
 
-				binaryStream
-					.word8('ver')
-					.word8('cmd')
-					.word8('rsv')
-					.word8('atyp')
-					.tap((args) => {
-						// capture the raw buffer
-						args.requestBuffer = buffer;
+        if (!provider || typeof provider.authenticate !== "function") {
+          return socket.destroy(
+            new Error("GSSAPI requested but no provider configured"),
+          );
+        }
 
-						// verify version is appropriate
-						if (args.ver !== RFC_1928_VERSION) {
-							return end(RFC_1928_REPLIES.GENERAL_FAILURE, args);
-						}
+        try {
+          provider.authenticate(socket, buffer, (err, principal) => {
+            if (err) {
+              self.server.emit(EVENTS.AUTHENTICATION_ERROR, "", err);
+              return socket.destroy(err);
+            }
 
-						// append socket to active sessions
-						self.activeSessions.push(socket);
+            self.server.emit(EVENTS.AUTHENTICATION, principal || "");
+            socket.once("data", connect);
+          });
+        } catch (ex) {
+          return socket.destroy(ex);
+        }
+      }
 
-						// create dst
-						args.dst = {};
+      /**
+       * +----+-----+-------+------+----------+----------+
+       * |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+       * +----+-----+-------+------+----------+----------+
+       * | 1  |  1  | X'00' |  1   | Variable |    2     |
+       * +----+-----+-------+------+----------+----------+
+       *
+       * @param {Buffer} buffer - a buffer
+       * @returns {undefined}
+       */
+      function connect(buffer) {
+        const binaryStream = binary.stream(buffer);
 
-						// ipv4
-						if (args.atyp === RFC_1928_ATYP.IPV4) {
-							binaryStream
-								.buffer('addr.buf', LENGTH_RFC_1928_ATYP)
-								.tap((args) => {
-									args.dst.addr = [].slice.call(args.addr.buf).join('.');
-								});
+        binaryStream
+          .word8("ver")
+          .word8("cmd")
+          .word8("rsv")
+          .word8("atyp")
+          .tap((args) => {
+            // capture the raw buffer
+            args.requestBuffer = buffer;
 
-							// domain name
-						} else if (args.atyp === RFC_1928_ATYP.DOMAINNAME) {
-							binaryStream
-								.word8('addr.size')
-								.buffer('addr.buf', 'addr.size')
-								.tap((args) => {
-									args.dst.addr = args.addr.buf.toString();
-								});
+            // verify version is appropriate
+            if (args.ver !== RFC_1928_VERSION) {
+              return end(RFC_1928_REPLIES.GENERAL_FAILURE, args);
+            }
 
-							// ipv6
-						} else if (args.atyp === RFC_1928_ATYP.IPV6) {
-							binaryStream
-								.word32be('addr.a')
-								.word32be('addr.b')
-								.word32be('addr.c')
-								.word32be('addr.d')
-								.tap((args) => {
-									args.dst.addr = [];
+            // append socket to active sessions
+            self.activeSessions.push(socket);
 
-									// extract the parts of the ipv6 address
-									['a', 'b', 'c', 'd'].forEach((x) => {
-										x = args.addr[x];
+            // create dst
+            args.dst = {};
 
-										// convert DWORD to two WORD values and append
-										/* eslint no-magic-numbers : 0 */
-										args.dst.addr.push((x >>> 16).toString(16));
-										args.dst.addr.push((x & 0xffff).toString(16));
-									});
+            // ipv4
+            if (args.atyp === RFC_1928_ATYP.IPV4) {
+              binaryStream
+                .buffer("addr.buf", LENGTH_RFC_1928_ATYP)
+                .tap((args) => {
+                  args.dst.addr = [].slice.call(args.addr.buf).join(".");
+                });
 
-									// format ipv6 address as string
-									args.dst.addr = args.dst.addr.join(':');
-								});
+              // domain name
+            } else if (args.atyp === RFC_1928_ATYP.DOMAINNAME) {
+              binaryStream
+                .word8("addr.size")
+                .buffer("addr.buf", "addr.size")
+                .tap((args) => {
+                  args.dst.addr = args.addr.buf.toString();
+                });
 
-							// unsupported address type
-						} else {
-							return end(RFC_1928_REPLIES.ADDRESS_TYPE_NOT_SUPPORTED, args);
-						}
-					})
-					.word16bu('dst.port')
-					.tap((args) => {
-						if (args.cmd === RFC_1928_COMMANDS.CONNECT) {
-							let connectionFilter = self.options.connectionFilter;
-							const connectionFilterDomain = domain.create();
+              // ipv6
+            } else if (args.atyp === RFC_1928_ATYP.IPV6) {
+              binaryStream
+                .word32be("addr.a")
+                .word32be("addr.b")
+                .word32be("addr.c")
+                .word32be("addr.d")
+                .tap((args) => {
+                  args.dst.addr = [];
 
-							// if no connection filter is provided, stub one
-							if (!connectionFilter || typeof connectionFilter !== 'function') {
-								connectionFilter = (destination, origin, callback) => setImmediate(callback);
-							}
+                  // extract the parts of the ipv6 address
+                  ["a", "b", "c", "d"].forEach((x) => {
+                    x = args.addr[x];
 
-							// capture connection filter errors
-							connectionFilterDomain.on('error', (err) => {
-								// emit failed destination connection event
-								self.server.emit(
-									EVENTS.CONNECTION_FILTER,
-									// destination
-									{
-										address: args.dst.addr,
-										port: args.dst.port,
-									},
-									// origin
-									{
-										address: socket.remoteAddress,
-										port: socket.remotePort,
-									},
-									err,
-								);
+                    // convert DWORD to two WORD values and append
+                    /* eslint no-magic-numbers : 0 */
+                    args.dst.addr.push((x >>> 16).toString(16));
+                    args.dst.addr.push((x & 0xffff).toString(16));
+                  });
 
-								// respond with failure
-								return end(RFC_1928_REPLIES.CONNECTION_NOT_ALLOWED, args);
-							});
+                  // format ipv6 address as string
+                  args.dst.addr = args.dst.addr.join(":");
+                });
 
-							// perform connection
-							return connectionFilter(
-								// destination
-								{
-									address: args.dst.addr,
-									port: args.dst.port,
-								},
-								// origin
-								{
-									address: socket.remoteAddress,
-									port: socket.remotePort,
-								},
-								connectionFilterDomain.intercept(() => {
-									const destination = net.createConnection(
-										args.dst.port,
-										args.dst.addr,
-										() => {
-											// prepare a success response
-											const responseBuffer = Buffer.alloc(args.requestBuffer.length);
-											args.requestBuffer.copy(responseBuffer);
-											responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
+              // unsupported address type
+            } else {
+              return end(RFC_1928_REPLIES.ADDRESS_TYPE_NOT_SUPPORTED, args);
+            }
+          })
+          .word16bu("dst.port")
+          .tap((args) => {
+            if (args.cmd === RFC_1928_COMMANDS.CONNECT) {
+              let connectionFilter = self.options.connectionFilter;
+              const connectionFilterDomain = domain.create();
 
-											// write acknowledgement to client...
-											socket.write(responseBuffer, () => {
-												// listen for data bi-directionally
-												destination.pipe(socket);
-												socket.pipe(destination);
+              // if no connection filter is provided, stub one
+              if (!connectionFilter || typeof connectionFilter !== "function") {
+                connectionFilter = (destination, origin, callback) =>
+                  setImmediate(callback);
+              }
 
-												// configure idle timeout for destination socket
-												if (self.idleTimeout && typeof destination.setTimeout === 'function') {
-													destination.setTimeout(self.idleTimeout, () => {
-														try {
-															destination.destroy(new Error('destination idle timeout'));
-														} catch {
-															// ignore errors
-														}
-													});
-												}
+              // capture connection filter errors
+              connectionFilterDomain.on("error", (err) => {
+                // emit failed destination connection event
+                self.server.emit(
+                  EVENTS.CONNECTION_FILTER,
+                  // destination
+                  {
+                    address: args.dst.addr,
+                    port: args.dst.port,
+                  },
+                  // origin
+                  {
+                    address: socket.remoteAddress,
+                    port: socket.remotePort,
+                  },
+                  err,
+                );
 
-												// ensure proper teardown when either side ends/closes/errors
-												const teardownDestination = () => {
-													try {
-														destination.destroy();
-													} catch {
-														// ignore socket destroy errors
-													}
-												};
-												const teardownSocket = () => {
-													try {
-														socket.destroy();
-													} catch {
-														// ignore socket destroy errors
-													}
-												};
+                // respond with failure
+                return end(RFC_1928_REPLIES.CONNECTION_NOT_ALLOWED, args);
+              });
 
-												socket.once('close', teardownDestination);
-												socket.once('end', teardownDestination);
-												socket.once('error', teardownDestination);
-												destination.once('error', teardownSocket);
-											});
-										},
-									);
-									const destinationInfo = {
-										address: args.dst.addr,
-										port: args.dst.port,
-									};
-									const originInfo = {
-										address: socket.remoteAddress,
-										port: socket.remotePort,
-									};
+              // perform connection
+              return connectionFilter(
+                // destination
+                {
+                  address: args.dst.addr,
+                  port: args.dst.port,
+                },
+                // origin
+                {
+                  address: socket.remoteAddress,
+                  port: socket.remotePort,
+                },
+                connectionFilterDomain.intercept(() => {
+                  const destination = net.createConnection(
+                    args.dst.port,
+                    args.dst.addr,
+                    () => {
+                      // prepare a success response
+                      const responseBuffer = Buffer.alloc(
+                        args.requestBuffer.length,
+                      );
+                      args.requestBuffer.copy(responseBuffer);
+                      responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
 
-									// capture successful connection
-									destination.on('connect', () => {
-										// emit connection event
-										self.server.emit(EVENTS.PROXY_CONNECT, destinationInfo, destination);
+                      // write acknowledgement to client...
+                      socket.write(responseBuffer, () => {
+                        // listen for data bi-directionally
+                        destination.pipe(socket);
+                        socket.pipe(destination);
 
-										// capture and emit proxied connection data
-										destination.on('data', (data) => {
-											self.server.emit(EVENTS.PROXY_DATA, data);
-										});
+                        // configure idle timeout for destination socket
+                        if (
+                          self.idleTimeout &&
+                          typeof destination.setTimeout === "function"
+                        ) {
+                          destination.setTimeout(self.idleTimeout, () => {
+                            try {
+                              destination.destroy(
+                                new Error("destination idle timeout"),
+                              );
+                            } catch {
+                              // ignore errors
+                            }
+                          });
+                        }
 
-										// capture close of destination and emit pending disconnect
-										// note: this event is only emitted once the destination socket is fully closed
-										destination.on('close', (hadError) => {
-											// indicate client connection end
-											self.server.emit(EVENTS.PROXY_DISCONNECT, originInfo, destinationInfo, hadError);
-										});
+                        // ensure proper teardown when either side ends/closes/errors
+                        const teardownDestination = () => {
+                          try {
+                            destination.destroy();
+                          } catch {
+                            // ignore socket destroy errors
+                          }
+                        };
+                        const teardownSocket = () => {
+                          try {
+                            socket.destroy();
+                          } catch {
+                            // ignore socket destroy errors
+                          }
+                        };
 
-										connectionFilterDomain.exit();
-									});
+                        socket.once("close", teardownDestination);
+                        socket.once("end", teardownDestination);
+                        socket.once("error", teardownDestination);
+                        destination.once("error", teardownSocket);
+                      });
+                    },
+                  );
+                  const destinationInfo = {
+                    address: args.dst.addr,
+                    port: args.dst.port,
+                  };
+                  const originInfo = {
+                    address: socket.remoteAddress,
+                    port: socket.remotePort,
+                  };
 
-									// capture connection errors and response appropriately
-									destination.on('error', (err) => {
-										// exit the connection filter domain
-										connectionFilterDomain.exit();
+                  // capture successful connection
+                  destination.on("connect", () => {
+                    // emit connection event
+                    self.server.emit(
+                      EVENTS.PROXY_CONNECT,
+                      destinationInfo,
+                      destination,
+                    );
 
-										// notify of connection error
-										err.addr = args.dst.addr;
-										err.atyp = args.atyp;
-										err.port = args.dst.port;
+                    // capture and emit proxied connection data
+                    destination.on("data", (data) => {
+                      self.server.emit(EVENTS.PROXY_DATA, data);
+                    });
 
-										self.server.emit(EVENTS.PROXY_ERROR, err);
+                    // capture close of destination and emit pending disconnect
+                    // note: this event is only emitted once the destination socket is fully closed
+                    destination.on("close", (hadError) => {
+                      // indicate client connection end
+                      self.server.emit(
+                        EVENTS.PROXY_DISCONNECT,
+                        originInfo,
+                        destinationInfo,
+                        hadError,
+                      );
+                    });
 
-										if (err.code && err.code === 'EADDRNOTAVAIL') {
-											return end(RFC_1928_REPLIES.HOST_UNREACHABLE, args);
-										}
+                    connectionFilterDomain.exit();
+                  });
 
-										if (err.code && err.code === 'ECONNREFUSED') {
-											return end(RFC_1928_REPLIES.CONNECTION_REFUSED, args);
-										}
+                  // capture connection errors and response appropriately
+                  destination.on("error", (err) => {
+                    // exit the connection filter domain
+                    connectionFilterDomain.exit();
 
-										return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
-									});
-								}),
-							);
-						} else {
-							// bind and udp associate commands
-							return end(RFC_1928_REPLIES.SUCCEEDED, args);
-						}
-					});
-			}
+                    // notify of connection error
+                    err.addr = args.dst.addr;
+                    err.atyp = args.atyp;
+                    err.port = args.dst.port;
 
-			/**
-			 * +----+-----+-------+------+----------+----------+
-			 * |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
-			 * +----+-----+-------+------+----------+----------+
-			 * | 1  |  1  | X'00' |  1   | Variable |    2     |
-			 * +----+-----+-------+------+----------+----------+
-			 *
-			 * @param {Buffer} response - a buffer representing the response
-			 * @param {object} args - arguments to supply to the proxy end event
-			 * @returns {undefined}
-			 */
-			function end(response, args) {
-				// either use the raw buffer (if available) or create a new one
-				const responseBuffer = args.requestBuffer || Buffer.allocUnsafe(2);
+                    self.server.emit(EVENTS.PROXY_ERROR, err);
 
-				if (!args.requestBuffer) {
-					responseBuffer[0] = RFC_1928_VERSION;
-				}
+                    if (err.code && err.code === "EADDRNOTAVAIL") {
+                      return end(RFC_1928_REPLIES.HOST_UNREACHABLE, args);
+                    }
 
-				responseBuffer[1] = response;
+                    if (err.code && err.code === "ECONNREFUSED") {
+                      return end(RFC_1928_REPLIES.CONNECTION_REFUSED, args);
+                    }
 
-				// respond then end the connection
-				try {
-					socket.end(responseBuffer);
-				} catch {
-					socket.destroy();
-				}
+                    return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
+                  });
+                }),
+              );
+            } else {
+              // bind and udp associate commands
+              return end(RFC_1928_REPLIES.SUCCEEDED, args);
+            }
+          });
+      }
 
-				// indicate end of connection
-				self.server.emit(EVENTS.PROXY_END, response, args);
-			}
+      /**
+       * +----+-----+-------+------+----------+----------+
+       * |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
+       * +----+-----+-------+------+----------+----------+
+       * | 1  |  1  | X'00' |  1   | Variable |    2     |
+       * +----+-----+-------+------+----------+----------+
+       *
+       * @param {Buffer} response - a buffer representing the response
+       * @param {object} args - arguments to supply to the proxy end event
+       * @returns {undefined}
+       */
+      function end(response, args) {
+        // either use the raw buffer (if available) or create a new one
+        const responseBuffer = args.requestBuffer || Buffer.allocUnsafe(2);
 
-			/**
-			 * +----+----------+----------+
-			 * |VER | NMETHODS | METHODS  |
-			 * +----+----------+----------+
-			 * | 1  |    1     | 1 to 255 |
-			 * +----+----------+----------+
-			 *
-			 * @param {Buffer} buffer - a buffer
-			 * @returns {undefined}
-			 */
-			function handshake(buffer) {
-				binary
-					.stream(buffer)
-					.word8('ver')
-					.word8('nmethods')
-					.buffer('methods', 'nmethods')
-					.tap((args) => {
-						// verify version is appropriate
-						if (args.ver !== RFC_1928_VERSION) {
-							return end(RFC_1928_REPLIES.GENERAL_FAILURE, args);
-						}
+        if (!args.requestBuffer) {
+          responseBuffer[0] = RFC_1928_VERSION;
+        }
 
-						// convert methods buffer to an array
-						const acceptedMethods = [].slice.call(args.methods).reduce((methods, method) => {
-							methods[method] = true;
-							return methods;
-						}, {});
-						const basicAuth = typeof self.options.authenticate === 'function';
-						const clientSupportsBasic = typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !== 'undefined'
-							&& acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION];
-						const clientSupportsGss = typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== 'undefined'
-							&& acceptedMethods[RFC_1928_METHODS.GSSAPI];
-						const clientSupportsNoAuth =
-							typeof acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED] !== 'undefined'
-							&& acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED];
-						let next = connect;
-						const responseBuffer = Buffer.allocUnsafe(2);
-						const serverSupportsGss = Boolean(
-							self.options.gssapi && self.options.gssapi.enabled && self.options.gssapi.provider,
-						);
+        responseBuffer[1] = response;
 
-						// form response Buffer
-						responseBuffer[0] = RFC_1928_VERSION;
-						responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
+        // respond then end the connection
+        try {
+          socket.end(responseBuffer);
+        } catch {
+          socket.destroy();
+        }
 
-						// prefer GSSAPI when enabled and mutually supported
-						if (serverSupportsGss && clientSupportsGss) {
-							responseBuffer[1] = RFC_1928_METHODS.GSSAPI;
-							next = gssapi;
+        // indicate end of connection
+        self.server.emit(EVENTS.PROXY_END, response, args);
+      }
 
-							// check for basic auth configuration and mutual support
-						} else if (basicAuth && clientSupportsBasic) {
-							responseBuffer[1] = RFC_1928_METHODS.BASIC_AUTHENTICATION;
-							next = authenticate;
+      /**
+       * +----+----------+----------+
+       * |VER | NMETHODS | METHODS  |
+       * +----+----------+----------+
+       * | 1  |    1     | 1 to 255 |
+       * +----+----------+----------+
+       *
+       * @param {Buffer} buffer - a buffer
+       * @returns {undefined}
+       */
+      function handshake(buffer) {
+        binary
+          .stream(buffer)
+          .word8("ver")
+          .word8("nmethods")
+          .buffer("methods", "nmethods")
+          .tap((args) => {
+            // verify version is appropriate
+            if (args.ver !== RFC_1928_VERSION) {
+              return end(RFC_1928_REPLIES.GENERAL_FAILURE, args);
+            }
 
-							// if NO AUTHENTICATION REQUIRED and client supports it
-						} else if (!basicAuth && clientSupportsNoAuth) {
-							responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
-							next = connect;
+            // convert methods buffer to an array
+            const acceptedMethods = [].slice
+              .call(args.methods)
+              .reduce((methods, method) => {
+                methods[method] = true;
+                return methods;
+              }, {});
+            const basicAuth = typeof self.options.authenticate === "function";
+            const clientSupportsBasic =
+              typeof acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION] !==
+                "undefined" &&
+              acceptedMethods[RFC_1928_METHODS.BASIC_AUTHENTICATION];
+            const clientSupportsGss =
+              typeof acceptedMethods[RFC_1928_METHODS.GSSAPI] !== "undefined" &&
+              acceptedMethods[RFC_1928_METHODS.GSSAPI];
+            const clientSupportsNoAuth =
+              typeof acceptedMethods[
+                RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED
+              ] !== "undefined" &&
+              acceptedMethods[RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED];
+            let next = connect;
+            const responseBuffer = Buffer.allocUnsafe(2);
+            const serverSupportsGss = Boolean(
+              self.options.gssapi &&
+              self.options.gssapi.enabled &&
+              self.options.gssapi.provider,
+            );
 
-							// basic auth callback not provided and no auth is not supported
-						} else {
-							return end(RFC_1928_METHODS.NO_ACCEPTABLE_METHODS, args);
-						}
+            // form response Buffer
+            responseBuffer[0] = RFC_1928_VERSION;
+            responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
 
-						// respond then listen for cmd and dst info
-						socket.write(responseBuffer, () => {
-							// emit handshake event
-							self.server.emit(EVENTS.HANDSHAKE, socket);
+            // prefer GSSAPI when enabled and mutually supported
+            if (serverSupportsGss && clientSupportsGss) {
+              responseBuffer[1] = RFC_1928_METHODS.GSSAPI;
+              next = gssapi;
 
-							// now listen for more details
-							socket.once('data', next);
-						});
-					});
-			}
+              // check for basic auth configuration and mutual support
+            } else if (basicAuth && clientSupportsBasic) {
+              responseBuffer[1] = RFC_1928_METHODS.BASIC_AUTHENTICATION;
+              next = authenticate;
 
-			// capture the client handshake
-			socket.once('data', handshake);
+              // if NO AUTHENTICATION REQUIRED and client supports it
+            } else if (!basicAuth && clientSupportsNoAuth) {
+              responseBuffer[1] = RFC_1928_METHODS.NO_AUTHENTICATION_REQUIRED;
+              next = connect;
 
-			// capture socket closure
-			socket.once('end', removeActiveSession);
-			socket.once('close', removeActiveSession);
-		});
-	}
+              // basic auth callback not provided and no auth is not supported
+            } else {
+              return end(RFC_1928_METHODS.NO_ACCEPTABLE_METHODS, args);
+            }
+
+            // respond then listen for cmd and dst info
+            socket.write(responseBuffer, () => {
+              // emit handshake event
+              self.server.emit(EVENTS.HANDSHAKE, socket);
+
+              // now listen for more details
+              socket.once("data", next);
+            });
+          });
+      }
+
+      // capture the client handshake
+      socket.once("data", handshake);
+
+      // capture socket closure
+      socket.once("end", removeActiveSession);
+      socket.once("close", removeActiveSession);
+    });
+  }
 }
 
 export default {
-	SocksServer,
-	createServer: (options) => {
-		const socksServer = new SocksServer(options);
-		return socksServer.server;
-	},
-	events: EVENTS,
+  SocksServer,
+  createServer: (options) => {
+    const socksServer = new SocksServer(options);
+    return socksServer.server;
+  },
+  events: EVENTS,
 };

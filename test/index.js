@@ -220,6 +220,107 @@ await test('basic-auth server returns no acceptable methods for no-auth-only cli
 	await closeServer(app);
 });
 
+await test('basic-auth rejects empty password by default', async () => {
+	const app = socks5.createServer({
+		authenticate(_username, _password, _socket, cb) {
+			return setImmediate(cb);
+		},
+	});
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake([0x00, 0x02]));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x02);
+
+	client.write(buildSocks5BasicAuth('foo', ''));
+	const authResponse = await readExactly(client, 2);
+	assert.strictEqual(authResponse[0], 0x01);
+	assert.strictEqual(authResponse[1], 0xff);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('basic-auth rejects empty username by default', async () => {
+	const app = socks5.createServer({
+		authenticate(_username, _password, _socket, cb) {
+			return setImmediate(cb);
+		},
+	});
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake([0x00, 0x02]));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x02);
+
+	client.write(buildSocks5BasicAuth('', 'bar'));
+	const authResponse = await readExactly(client, 2);
+	assert.strictEqual(authResponse[0], 0x01);
+	assert.strictEqual(authResponse[1], 0xff);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('compatAuth allowEmptyPassword lets callback decide authentication', async () => {
+	const app = socks5.createServer({
+		authenticate(username, password, _socket, cb) {
+			if (username === 'foo' && password === '') return setImmediate(cb);
+			return setImmediate(cb, new Error('bad creds'));
+		},
+		compatAuth: { allowEmptyPassword: true },
+	});
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake([0x00, 0x02]));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x02);
+
+	client.write(buildSocks5BasicAuth('foo', ''));
+	const authResponse = await readExactly(client, 2);
+	assert.strictEqual(authResponse[0], 0x01);
+	assert.strictEqual(authResponse[1], 0x00);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('compatAuth does not bypass method negotiation when BASIC is absent', async () => {
+	const app = socks5.createServer({
+		authenticate(_username, _password, _socket, cb) {
+			return setImmediate(cb);
+		},
+		compatAuth: { allowEmptyPassword: true },
+	});
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const res = await readExactly(client, 2);
+	assert.strictEqual(res[0], 0x05);
+	assert.strictEqual(res[1], 0xff);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('compatAuth strictMethodNegotiation=false is rejected', async () => {
+	assert.throws(
+		() => socks5.createServer({ compatAuth: { strictMethodNegotiation: false } }),
+		/strictMethodNegotiation=false is not supported/,
+	);
+});
+
 await test('bind command receives success response and closes', async () => {
 	const app = socks5.createServer();
 	await listenServer(app);
