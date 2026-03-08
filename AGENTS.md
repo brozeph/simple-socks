@@ -30,14 +30,16 @@ This repository is a Node.js SOCKS5 server library (`simple-socks`) with example
 GitHub Actions workflow: `.github/workflows/test.yml`
 
 - `quality` job runs formatting and lint checks
-- matrix `test` job runs tests across supported Node versions/OS targets
+- matrix `test` job runs tests on Node `18`, `20`, and `22` across Linux/Windows
 - `coverage` job generates lcov and uploads to Codecov
+- coverage upload expects `CODECOV_TOKEN` to be configured in repository secrets
 
 All changes should pass:
 
 1. `npm run format:check`
 2. `npm run lint`
 3. `npm run test`
+4. `npm run test:coverage` (when changing CI/coverage behavior)
 
 ## Coding Conventions
 
