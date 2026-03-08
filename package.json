@@ -5,7 +5,9 @@
   "type": "module",
   "main": "src/socks5.js",
   "types": "index.d.ts",
-  "engine": "node >= 16.0",
+  "engines": {
+    "node": ">=16.0"
+  },
   "scripts": {
     "format": "dprint fmt",
     "format:check": "dprint check",
