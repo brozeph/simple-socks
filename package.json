@@ -1,11 +1,13 @@
 {
   "name": "simple-socks",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "description": "proxies requests ",
   "type": "module",
   "main": "src/socks5.js",
   "types": "index.d.ts",
-  "engine": "node >= 16.0",
+  "engines": {
+    "node": ">=16.0"
+  },
   "scripts": {
     "format": "dprint fmt",
     "format:check": "dprint check",

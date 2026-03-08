@@ -1,4 +1,6 @@
 import assert from 'assert';
+import EventEmitter from 'events';
+import net from 'net';
 import socks5 from '../src/socks5.js';
 import {
 	buildSocks5BasicAuth,
@@ -6,6 +8,7 @@ import {
 	buildSocks5Handshake,
 	connectTo,
 	createEchoServer,
+	once,
 	readExactly,
 } from './helpers.js';
 
@@ -26,6 +29,34 @@ function listenServer(srv) {
 
 function closeServer(srv) {
 	return new Promise((resolve) => srv.close(() => resolve()));
+}
+
+function reservePortThenClose() {
+	return new Promise((resolve, reject) => {
+		const srv = net.createServer();
+		srv.on('error', reject);
+		srv.listen(0, '127.0.0.1', () => {
+			const addr = srv.address();
+			srv.close((err) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				resolve(addr.port);
+			});
+		});
+	});
+}
+
+function createMockDestinationSocket(error) {
+	const destination = new EventEmitter();
+	destination.pipe = () => destination;
+	destination.setTimeout = () => destination;
+	destination.destroy = () => destination;
+	setImmediate(() => {
+		destination.emit('error', error);
+	});
+	return destination;
 }
 
 await test('no-auth: connect to local echo', async () => {
@@ -153,6 +184,198 @@ await test('activeSessions returns to 0 after idle timeout', async () => {
 	client.destroy();
 	await closeServer(app);
 	await closeServer(echo.server);
+});
+
+await test('invalid handshake version returns general failure', async () => {
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(Buffer.from([0x04, 0x01, 0x00]));
+	const res = await readExactly(client, 2);
+	assert.strictEqual(res[0], 0x05);
+	assert.strictEqual(res[1], 0x01);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('basic-auth server returns no acceptable methods for no-auth-only client', async () => {
+	const app = socks5.createServer({
+		authenticate(_username, _password, _socket, cb) {
+			return setImmediate(cb);
+		},
+	});
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const res = await readExactly(client, 2);
+	assert.strictEqual(res[0], 0x05);
+	assert.strictEqual(res[1], 0xff);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('bind command receives success response and closes', async () => {
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const bindRequest = buildSocks5ConnectRequest('127.0.0.1', 80);
+	bindRequest[1] = 0x02; // BIND
+	client.write(bindRequest);
+	const response = await readExactly(client, 2);
+	assert.strictEqual(response[0], 0x05);
+	assert.strictEqual(response[1], 0x00);
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('connect to closed port emits proxyError and returns connection refused', async () => {
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+	const closedPort = await reservePortThenClose();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const proxyErrorPromise = once(app, 'proxyError');
+	client.write(buildSocks5ConnectRequest('127.0.0.1', closedPort));
+	const response = await readExactly(client, 2);
+	assert.strictEqual(response[0], 0x05);
+	assert.strictEqual(response[1], 0x05);
+
+	const proxyError = await proxyErrorPromise;
+	assert.strictEqual(proxyError.code, 'ECONNREFUSED');
+
+	client.destroy();
+	await closeServer(app);
+});
+
+await test('proxyData event is emitted when client sends tunneled payload', async () => {
+	const echo = await createEchoServer();
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	client.write(buildSocks5ConnectRequest(echo.host, echo.port));
+	const connectResponse = await readExactly(client, 2);
+	assert.strictEqual(connectResponse[0], 0x05);
+	assert.strictEqual(connectResponse[1], 0x00);
+
+	const proxyDataPromise = once(app, 'proxyData');
+	const payload = Buffer.from('ping');
+	client.write(payload);
+	const proxied = await proxyDataPromise;
+	assert.strictEqual(Buffer.compare(proxied, payload), 0);
+
+	client.destroy();
+	await closeServer(app);
+	await closeServer(echo.server);
+});
+
+await test('maps EADDRNOTAVAIL to host unreachable response', async () => {
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+	const client = await connectTo(addr.port, addr.address);
+
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const originalCreateConnection = net.createConnection;
+	try {
+		net.createConnection = () =>
+			createMockDestinationSocket(Object.assign(new Error('unreachable host'), { code: 'EADDRNOTAVAIL' }));
+
+		client.write(buildSocks5ConnectRequest('10.255.255.1', 80));
+		const response = await readExactly(client, 2);
+		assert.strictEqual(response[0], 0x05);
+		assert.strictEqual(response[1], 0x04);
+	} finally {
+		net.createConnection = originalCreateConnection;
+		client.destroy();
+		await closeServer(app);
+	}
+});
+
+await test('maps unknown destination error to network unreachable response', async () => {
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+	const client = await connectTo(addr.port, addr.address);
+
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const originalCreateConnection = net.createConnection;
+	try {
+		net.createConnection = () =>
+			createMockDestinationSocket(Object.assign(new Error('network down'), { code: 'ENETDOWN' }));
+
+		client.write(buildSocks5ConnectRequest('127.0.0.1', 80));
+		const response = await readExactly(client, 2);
+		assert.strictEqual(response[0], 0x05);
+		assert.strictEqual(response[1], 0x03);
+	} finally {
+		net.createConnection = originalCreateConnection;
+		client.destroy();
+		await closeServer(app);
+	}
+});
+
+await test('falls back to socket.destroy when socket.end throws in end()', async () => {
+	const app = socks5.createServer();
+	await listenServer(app);
+	const addr = app.address();
+
+	app.once('handshake', (serverSocket) => {
+		serverSocket.end = () => {
+			throw new Error('forced end failure');
+		};
+	});
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const connectReq = buildSocks5ConnectRequest('127.0.0.1', 80);
+	connectReq[0] = 0x04; // invalid version for connect() -> triggers end()
+	client.write(connectReq);
+
+	const proxyEndPromise = once(app, 'proxyEnd');
+	const responseCode = await proxyEndPromise;
+	assert.strictEqual(responseCode, 0x01);
+
+	client.destroy();
+	await closeServer(app);
 });
 
 // Exit non-zero on failures (handled in test wrapper)
