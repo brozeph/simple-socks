@@ -318,8 +318,9 @@ class SocksServer {
 									const destination = net.createConnection(
 										{
 											host: args.dst.addr,
-											port: args.dst.port,
 											localAddress: self.options.localAddress,
+											localPort: self.options.localPort,
+											port: args.dst.port,
 										},
 										() => {
 											// prepare a success response
