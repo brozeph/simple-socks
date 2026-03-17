@@ -179,7 +179,9 @@ This method accepts an optional `options` argument:
 
 - `options.authentication` - A callback for authentication
 - `options.connectionFilter` - A callback for connection filtering
+- `options.connectTimeout` - Milliseconds to wait for destination connect phase before failing the request (0 is disabled, default 0)
 - `options.idleTimeout` - Milliseconds of inactivity before destroying client/destination sockets (0 is disabled, default 0)
+- `options.destinationIdleTimeout` - Milliseconds of inactivity before destroying destination sockets; falls back to `options.idleTimeout` when not explicitly set
 - `options.compatAuth` - Non-default RFC 1929 compatibility controls for empty credentials (defaults are strict)
 
 #### authentication callback

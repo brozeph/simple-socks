@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "proxies requests ",
   "type": "module",
   "main": "src/socks5.js",
@@ -19,7 +19,8 @@
   "contributors": [
     "https://github.com/pronskiy",
     "https://github.com/fabiensk",
-    "https://github.com/lanius-collaris"
+    "https://github.com/lanius-collaris",
+    "https://github.com/adsr"
   ],
   "license": "MIT",
   "keywords": [

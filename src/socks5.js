@@ -48,6 +48,14 @@ class SocksServer {
 		}
 
 		this.idleTimeout = this.options.idleTimeout || 0;
+		this.connectTimeout = this.options.connectTimeout || 0;
+		this.destinationIdleTimeout = Object.prototype.hasOwnProperty.call(
+				this.options,
+				'destinationIdleTimeout',
+			)
+			? this.options.destinationIdleTimeout
+			: this.idleTimeout;
+
 		this.server = net.createServer((socket) => {
 			socket.on('error', (err) => {
 				self.server.emit(EVENTS.PROXY_ERROR, err);
@@ -318,8 +326,9 @@ class SocksServer {
 									const destination = net.createConnection(
 										{
 											host: args.dst.addr,
-											port: args.dst.port,
 											localAddress: self.options.localAddress,
+											localPort: self.options.localPort,
+											port: args.dst.port,
 										},
 										() => {
 											// prepare a success response
@@ -337,18 +346,21 @@ class SocksServer {
 
 												// configure idle timeout for destination socket
 												if (
-													self.idleTimeout
+													self.destinationIdleTimeout
 													&& typeof destination.setTimeout === 'function'
 												) {
-													destination.setTimeout(self.idleTimeout, () => {
-														try {
-															destination.destroy(
-																new Error('destination idle timeout'),
-															);
-														} catch {
-															// ignore errors
-														}
-													});
+													destination.setTimeout(
+														self.destinationIdleTimeout,
+														() => {
+															try {
+																destination.destroy(
+																	new Error('destination idle timeout'),
+																);
+															} catch {
+																// ignore socket destroy errors
+															}
+														},
+													);
 												}
 
 												// ensure proper teardown when either side ends/closes/errors
@@ -436,10 +448,27 @@ class SocksServer {
 										return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
 									});
 
-									if (self.options.connTimeout) {
-										destination.setTimeout(self.options.connTimeout);
-										destination.on('timeout', () => {
-											destination.destroy();
+									if (
+										self.connectTimeout
+										&& typeof destination.setTimeout === 'function'
+									) {
+										const onConnectTimeout = () => {
+											const timeoutError = new Error('destination connect timeout');
+											timeoutError.code = 'ETIMEDOUT';
+											try {
+												destination.destroy(timeoutError);
+											} catch {
+												// ignore socket destroy errors
+											}
+										};
+
+										destination.setTimeout(self.connectTimeout);
+										destination.once('timeout', onConnectTimeout);
+										destination.once('connect', () => {
+											destination.off('timeout', onConnectTimeout);
+											if (!self.destinationIdleTimeout) {
+												destination.setTimeout(0);
+											}
 										});
 									}
 								}),
