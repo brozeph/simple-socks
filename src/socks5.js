@@ -374,6 +374,7 @@ class SocksServer {
 											});
 										},
 									);
+
 									const destinationInfo = {
 										address: args.dst.addr,
 										port: args.dst.port,
@@ -434,6 +435,13 @@ class SocksServer {
 
 										return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
 									});
+
+									if (self.options.connTimeout) {
+										destination.setTimeout(self.options.connTimeout);
+										destination.on('timeout', () => {
+											destination.destroy();
+										});
+									}
 								}),
 							);
 						} else {
