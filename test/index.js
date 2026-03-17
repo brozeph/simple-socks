@@ -59,6 +59,36 @@ function createMockDestinationSocket(error) {
 	return destination;
 }
 
+function createMockPendingDestinationSocket() {
+	const destination = new EventEmitter();
+	let timeoutId;
+	destination.pipe = () => destination;
+	destination.setTimeout = (ms) => {
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = undefined;
+		}
+		if (ms > 0) {
+			timeoutId = setTimeout(() => {
+				destination.emit('timeout');
+			}, ms);
+		}
+		return destination;
+	};
+	destination.destroy = (err) => {
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = undefined;
+		}
+		if (err) {
+			setImmediate(() => destination.emit('error', err));
+		}
+		setImmediate(() => destination.emit('close', Boolean(err)));
+		return destination;
+	};
+	return destination;
+}
+
 await test('no-auth: connect to local echo', async () => {
 	const echo = await createEchoServer();
 	const app = socks5.createServer();
@@ -184,6 +214,69 @@ await test('activeSessions returns to 0 after idle timeout', async () => {
 	client.destroy();
 	await closeServer(app);
 	await closeServer(echo.server);
+});
+
+await test('destinationIdleTimeout destroys idle destination socket', async () => {
+	const echo = await createEchoServer();
+	const app = socks5.createServer({ destinationIdleTimeout: 50 });
+	await listenServer(app);
+	const addr = app.address();
+
+	const client = await connectTo(addr.port, addr.address);
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	client.write(buildSocks5ConnectRequest(echo.host, echo.port));
+	const connectResponse = await readExactly(client, 2);
+	assert.strictEqual(connectResponse[0], 0x05);
+	assert.strictEqual(connectResponse[1], 0x00);
+
+	const disconnect = await Promise.race([
+		once(app, 'proxyDisconnect'),
+		new Promise((_, reject) =>
+			setTimeout(
+				() => reject(new Error('expected proxyDisconnect from destinationIdleTimeout')),
+				500,
+			)
+		),
+	]);
+	assert.ok(disconnect);
+
+	client.destroy();
+	await closeServer(app);
+	await closeServer(echo.server);
+});
+
+await test('connectTimeout fails destination connection when connect phase is too slow', async () => {
+	const app = socks5.createServer({ connectTimeout: 25, destinationIdleTimeout: 0 });
+	await listenServer(app);
+	const addr = app.address();
+	const client = await connectTo(addr.port, addr.address);
+
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const originalCreateConnection = net.createConnection;
+	try {
+		net.createConnection = () => createMockPendingDestinationSocket();
+
+		const proxyErrorPromise = once(app, 'proxyError');
+		client.write(buildSocks5ConnectRequest('127.0.0.1', 80));
+		const response = await readExactly(client, 2);
+		assert.strictEqual(response[0], 0x05);
+		assert.strictEqual(response[1], 0x03);
+
+		const proxyError = await proxyErrorPromise;
+		assert.strictEqual(proxyError.code, 'ETIMEDOUT');
+	} finally {
+		net.createConnection = originalCreateConnection;
+		client.destroy();
+		await closeServer(app);
+	}
 });
 
 await test('invalid handshake version returns general failure', async () => {
