@@ -1,4 +1,5 @@
 import { Server, Socket } from 'net';
+import * as stream from 'stream';
 
 export interface DestinationInfo {
 	address: string;
@@ -11,7 +12,7 @@ export interface OriginInfo {
 }
 
 export type AuthenticateCallback = (err?: Error) => void;
-export type ConnectionFilterCallback = (err?: Error) => void;
+export type ConnectionFilterCallback = (err?: Error, dest?: stream.Duplex) => void;
 
 export type AuthenticateFn = (
 	username: string,
