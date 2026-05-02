@@ -1,4 +1,4 @@
-import { Server, Socket } from 'net';
+import { NetConnectOpts, Server, Socket } from 'net';
 
 export interface DestinationInfo {
 	address: string;
@@ -12,6 +12,10 @@ export interface OriginInfo {
 
 export type AuthenticateCallback = (err?: Error) => void;
 export type ConnectionFilterCallback = (err?: Error) => void;
+export type ConnectionOptionsCallback = (
+	err?: Error | null,
+	options?: NetConnectOpts,
+) => void;
 
 export type AuthenticateFn = (
 	username: string,
@@ -26,9 +30,17 @@ export type ConnectionFilterFn = (
 	callback: ConnectionFilterCallback,
 ) => void;
 
+export type ConnectionOptionsFn = (
+	destination: DestinationInfo,
+	origin: OriginInfo,
+	defaults: NetConnectOpts,
+	callback: ConnectionOptionsCallback,
+) => void;
+
 export interface Options {
 	authenticate?: AuthenticateFn;
 	connectionFilter?: ConnectionFilterFn;
+	connectionOptions?: ConnectionOptionsFn;
 	// Destroy sockets after this many ms of inactivity. 0 disables timeout.
 	idleTimeout?: number;
 	gssapi?: {

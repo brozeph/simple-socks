@@ -323,70 +323,6 @@ class SocksServer {
 									port: socket.remotePort,
 								},
 								connectionFilterDomain.intercept(() => {
-									const destination = net.createConnection(
-										{
-											host: args.dst.addr,
-											localAddress: self.options.localAddress,
-											localPort: self.options.localPort,
-											port: args.dst.port,
-										},
-										() => {
-											// prepare a success response
-											const responseBuffer = Buffer.alloc(
-												args.requestBuffer.length,
-											);
-											args.requestBuffer.copy(responseBuffer);
-											responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
-
-											// write acknowledgement to client...
-											socket.write(responseBuffer, () => {
-												// listen for data bi-directionally
-												destination.pipe(socket);
-												socket.pipe(destination);
-
-												// configure idle timeout for destination socket
-												if (
-													self.destinationIdleTimeout
-													&& typeof destination.setTimeout === 'function'
-												) {
-													destination.setTimeout(
-														self.destinationIdleTimeout,
-														() => {
-															try {
-																destination.destroy(
-																	new Error('destination idle timeout'),
-																);
-															} catch {
-																// ignore socket destroy errors
-															}
-														},
-													);
-												}
-
-												// ensure proper teardown when either side ends/closes/errors
-												const teardownDestination = () => {
-													try {
-														destination.destroy();
-													} catch {
-														// ignore socket destroy errors
-													}
-												};
-												const teardownSocket = () => {
-													try {
-														socket.destroy();
-													} catch {
-														// ignore socket destroy errors
-													}
-												};
-
-												socket.once('close', teardownDestination);
-												socket.once('end', teardownDestination);
-												socket.once('error', teardownDestination);
-												destination.once('error', teardownSocket);
-											});
-										},
-									);
-
 									const destinationInfo = {
 										address: args.dst.addr,
 										port: args.dst.port,
@@ -395,82 +331,191 @@ class SocksServer {
 										address: socket.remoteAddress,
 										port: socket.remotePort,
 									};
+									const defaultConnectionOptions = {
+										host: args.dst.addr,
+										localAddress: self.options.localAddress,
+										localPort: self.options.localPort,
+										port: args.dst.port,
+									};
 
-									// capture successful connection
-									destination.on('connect', () => {
-										// emit connection event
-										self.server.emit(
-											EVENTS.PROXY_CONNECT,
-											destinationInfo,
-											destination,
-										);
-
-										// capture and emit proxied connection data
-										destination.on('data', (data) => {
-											self.server.emit(EVENTS.PROXY_DATA, data);
-										});
-
-										// capture close of destination and emit pending disconnect
-										// note: this event is only emitted once the destination socket is fully closed
-										destination.on('close', (hadError) => {
-											// indicate client connection end
-											self.server.emit(
-												EVENTS.PROXY_DISCONNECT,
-												originInfo,
-												destinationInfo,
-												hadError,
-											);
-										});
-
+									const failConnectionOptions = (err) => {
 										connectionFilterDomain.exit();
-									});
-
-									// capture connection errors and response appropriately
-									destination.on('error', (err) => {
-										// exit the connection filter domain
-										connectionFilterDomain.exit();
-
-										// notify of connection error
 										err.addr = args.dst.addr;
 										err.atyp = args.atyp;
 										err.port = args.dst.port;
-
 										self.server.emit(EVENTS.PROXY_ERROR, err);
-
-										if (err.code && err.code === 'EADDRNOTAVAIL') {
-											return end(RFC_1928_REPLIES.HOST_UNREACHABLE, args);
-										}
-
-										if (err.code && err.code === 'ECONNREFUSED') {
-											return end(RFC_1928_REPLIES.CONNECTION_REFUSED, args);
-										}
-
 										return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
-									});
+									};
 
-									if (
-										self.connectTimeout
-										&& typeof destination.setTimeout === 'function'
-									) {
-										const onConnectTimeout = () => {
-											const timeoutError = new Error('destination connect timeout');
-											timeoutError.code = 'ETIMEDOUT';
-											try {
-												destination.destroy(timeoutError);
-											} catch {
-												// ignore socket destroy errors
-											}
-										};
+									const connectDestination = (connectionOptions) => {
+										if (
+											connectionOptions
+											&& typeof connectionOptions !== 'object'
+										) {
+											return failConnectionOptions(
+												new TypeError('connectionOptions must be an object'),
+											);
+										}
 
-										destination.setTimeout(self.connectTimeout);
-										destination.once('timeout', onConnectTimeout);
-										destination.once('connect', () => {
-											destination.off('timeout', onConnectTimeout);
-											if (!self.destinationIdleTimeout) {
-												destination.setTimeout(0);
-											}
+										const finalConnectionOptions = connectionOptions
+											|| defaultConnectionOptions;
+										const destination = net.createConnection(
+											finalConnectionOptions,
+											() => {
+												// prepare a success response
+												const responseBuffer = Buffer.alloc(
+													args.requestBuffer.length,
+												);
+												args.requestBuffer.copy(responseBuffer);
+												responseBuffer[1] = RFC_1928_REPLIES.SUCCEEDED;
+
+												// write acknowledgement to client...
+												socket.write(responseBuffer, () => {
+													// listen for data bi-directionally
+													destination.pipe(socket);
+													socket.pipe(destination);
+
+													// configure idle timeout for destination socket
+													if (
+														self.destinationIdleTimeout
+														&& typeof destination.setTimeout === 'function'
+													) {
+														destination.setTimeout(
+															self.destinationIdleTimeout,
+															() => {
+																try {
+																	destination.destroy(
+																		new Error('destination idle timeout'),
+																	);
+																} catch {
+																	// ignore socket destroy errors
+																}
+															},
+														);
+													}
+
+													// ensure proper teardown when either side ends/closes/errors
+													const teardownDestination = () => {
+														try {
+															destination.destroy();
+														} catch {
+															// ignore socket destroy errors
+														}
+													};
+													const teardownSocket = () => {
+														try {
+															socket.destroy();
+														} catch {
+															// ignore socket destroy errors
+														}
+													};
+
+													socket.once('close', teardownDestination);
+													socket.once('end', teardownDestination);
+													socket.once('error', teardownDestination);
+													destination.once('error', teardownSocket);
+												});
+											},
+										);
+
+										// capture successful connection
+										destination.on('connect', () => {
+											// emit connection event
+											self.server.emit(
+												EVENTS.PROXY_CONNECT,
+												destinationInfo,
+												destination,
+											);
+
+											// capture and emit proxied connection data
+											destination.on('data', (data) => {
+												self.server.emit(EVENTS.PROXY_DATA, data);
+											});
+
+											// capture close of destination and emit pending disconnect
+											// note: this event is only emitted once the destination socket is fully closed
+											destination.on('close', (hadError) => {
+												// indicate client connection end
+												self.server.emit(
+													EVENTS.PROXY_DISCONNECT,
+													originInfo,
+													destinationInfo,
+													hadError,
+												);
+											});
+
+											connectionFilterDomain.exit();
 										});
+
+										// capture connection errors and response appropriately
+										destination.on('error', (err) => {
+											// exit the connection filter domain
+											connectionFilterDomain.exit();
+
+											// notify of connection error
+											err.addr = args.dst.addr;
+											err.atyp = args.atyp;
+											err.port = args.dst.port;
+
+											self.server.emit(EVENTS.PROXY_ERROR, err);
+
+											if (err.code && err.code === 'EADDRNOTAVAIL') {
+												return end(RFC_1928_REPLIES.HOST_UNREACHABLE, args);
+											}
+
+											if (err.code && err.code === 'ECONNREFUSED') {
+												return end(RFC_1928_REPLIES.CONNECTION_REFUSED, args);
+											}
+
+											return end(RFC_1928_REPLIES.NETWORK_UNREACHABLE, args);
+										});
+
+										if (
+											self.connectTimeout
+											&& typeof destination.setTimeout === 'function'
+										) {
+											const onConnectTimeout = () => {
+												const timeoutError = new Error('destination connect timeout');
+												timeoutError.code = 'ETIMEDOUT';
+												try {
+													destination.destroy(timeoutError);
+												} catch {
+													// ignore socket destroy errors
+												}
+											};
+
+											destination.setTimeout(self.connectTimeout);
+											destination.once('timeout', onConnectTimeout);
+											destination.once('connect', () => {
+												destination.off('timeout', onConnectTimeout);
+												if (!self.destinationIdleTimeout) {
+													destination.setTimeout(0);
+												}
+											});
+										}
+									};
+
+									if (typeof self.options.connectionOptions !== 'function') {
+										return connectDestination(defaultConnectionOptions);
 									}
+
+									const connectionOptionsDomain = domain.create();
+									connectionOptionsDomain.on('error', failConnectionOptions);
+									return connectionOptionsDomain.run(() => {
+										self.options.connectionOptions(
+											destinationInfo,
+											originInfo,
+											{
+												...defaultConnectionOptions,
+											},
+											connectionOptionsDomain.intercept((connectionOptions) => {
+												connectionOptionsDomain.exit();
+												return connectDestination(
+													connectionOptions || defaultConnectionOptions,
+												);
+											}),
+										);
+									});
 								}),
 							);
 						} else {

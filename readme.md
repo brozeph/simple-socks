@@ -179,6 +179,7 @@ This method accepts an optional `options` argument:
 
 - `options.authentication` - A callback for authentication
 - `options.connectionFilter` - A callback for connection filtering
+- `options.connectionOptions` - A callback for customizing outbound TCP connection options
 - `options.connectTimeout` - Milliseconds to wait for destination connect phase before failing the request (0 is disabled, default 0)
 - `options.idleTimeout` - Milliseconds of inactivity before destroying client/destination sockets (0 is disabled, default 0)
 - `options.destinationIdleTimeout` - Milliseconds of inactivity before destroying destination sockets; falls back to `options.idleTimeout` when not explicitly set
@@ -291,6 +292,100 @@ The `connectionFilter` callback accepts three arguments:
 - callback - callback for destination and/or origin address validation... if connections are allowed to the destination address, the callback should be called with no arguments
 
 For an example, see [examples/createServerConnectionFilter.js](examples/createServerConnectionFilter.js).
+
+#### connectionOptions callback
+
+Allows you to customize the options passed to `net.createConnection` after a request passes `connectionFilter`. This callback can rewrite the outbound destination, choose a local bind address, or route traffic through a local TCP adapter. It must return TCP connection options; it does not replace the destination with an arbitrary stream.
+
+```javascript
+import socks5 from "simple-socks";
+
+const server = socks5.createServer({
+  connectionOptions(destination, origin, defaults, callback) {
+    return callback(null, {
+      ...defaults,
+      host: "127.0.0.1",
+      port: destination.port === 443 ? 8443 : destination.port,
+    });
+  },
+});
+```
+
+The `connectionOptions` callback accepts four arguments:
+
+- destination - an information object containing details for the requested destination connection
+  - address - the TCP address of the remote server
+  - port - the TCP port of the remote server
+- origin - an information object containing details for origin connection
+  - address - the TCP address of the origin (client) connection
+  - port - the TCP port of the origin (client) connection
+- defaults - the options object the server would normally pass to `net.createConnection`
+  - host - the requested destination address
+  - port - the requested destination port
+  - localAddress - the configured local address, if provided
+  - localPort - the configured local port, if provided
+- callback - callback for returning an error or the final `net.createConnection` options
+
+To route requests through an SSH tunnel while keeping `simple-socks` responsible for creating a real `net.Socket`, bridge each request through a temporary local TCP listener. The listener accepts the socket created by `simple-socks`, then pipes it to the SSH channel returned by `forwardOut`:
+
+```javascript
+import net from "net";
+import socks5 from "simple-socks";
+
+function createSshForwardTarget(ssh, destination, origin, callback) {
+  const forwarder = net.createServer((localSocket) => {
+    forwarder.close();
+
+    ssh.forwardOut(
+      origin.address,
+      origin.port,
+      destination.address,
+      destination.port,
+      (err, sshStream) => {
+        if (err) {
+          localSocket.destroy(err);
+          return;
+        }
+
+        localSocket.pipe(sshStream);
+        sshStream.pipe(localSocket);
+
+        localSocket.once("close", () => sshStream.destroy());
+        localSocket.once("error", () => sshStream.destroy());
+        sshStream.once("close", () => localSocket.destroy());
+        sshStream.once("error", () => localSocket.destroy());
+      },
+    );
+  });
+
+  forwarder.once("error", callback);
+  forwarder.listen(0, "127.0.0.1", () => {
+    const address = forwarder.address();
+
+    callback(null, {
+      host: address.address,
+      port: address.port,
+    });
+  });
+}
+
+const server = socks5.createServer({
+  connectionOptions(destination, origin, defaults, callback) {
+    createSshForwardTarget(ssh, destination, origin, (err, target) => {
+      if (err) {
+        return callback(err);
+      }
+
+      return callback(null, {
+        ...defaults,
+        ...target,
+      });
+    });
+  },
+});
+```
+
+This pattern keeps the SOCKS server's outbound side TCP-based. If you already have a `stream.Duplex` from an SSH client or another transport, adapt it behind a local TCP listener instead of returning the stream directly.
 
 ### Multiple Interfaces
 
