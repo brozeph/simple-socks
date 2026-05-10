@@ -279,6 +279,85 @@ await test('connectTimeout fails destination connection when connect phase is to
 	}
 });
 
+await test('connectionOptions rewrites outbound host and port', async () => {
+	const echo = await createEchoServer();
+	const app = socks5.createServer({
+		connectionOptions(destination, origin, defaults, callback) {
+			assert.strictEqual(destination.address, '127.0.0.1');
+			assert.strictEqual(destination.port, 9);
+			assert.strictEqual(origin.address, '127.0.0.1');
+			assert.strictEqual(defaults.host, destination.address);
+			assert.strictEqual(defaults.port, destination.port);
+
+			return setImmediate(callback, null, {
+				...defaults,
+				host: echo.host,
+				port: echo.port,
+			});
+		},
+	});
+	await listenServer(app);
+	const addr = app.address();
+	const client = await connectTo(addr.port, addr.address);
+
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	client.write(buildSocks5ConnectRequest('127.0.0.1', 9));
+	const response = await readExactly(client, 2);
+	assert.strictEqual(response[0], 0x05);
+	assert.strictEqual(response[1], 0x00);
+
+	const payload = Buffer.from('rewritten destination');
+	client.write(payload);
+	const echoed = await readExactly(client, payload.length);
+	assert.strictEqual(Buffer.compare(echoed, payload), 0);
+
+	client.destroy();
+	await closeServer(app);
+	await closeServer(echo.server);
+});
+
+await test('connectionOptions error fails request before opening destination socket', async () => {
+	const app = socks5.createServer({
+		connectionOptions(_destination, _origin, _defaults, callback) {
+			return setImmediate(callback, new Error('cannot prepare connection options'));
+		},
+	});
+	await listenServer(app);
+	const addr = app.address();
+	const client = await connectTo(addr.port, addr.address);
+
+	client.write(buildSocks5Handshake(0x00));
+	const selection = await readExactly(client, 2);
+	assert.strictEqual(selection[0], 0x05);
+	assert.strictEqual(selection[1], 0x00);
+
+	const originalCreateConnection = net.createConnection;
+	try {
+		net.createConnection = () => {
+			throw new Error('net.createConnection should not be called');
+		};
+
+		const proxyErrorPromise = once(app, 'proxyError');
+		client.write(buildSocks5ConnectRequest('127.0.0.1', 80));
+		const response = await readExactly(client, 2);
+		assert.strictEqual(response[0], 0x05);
+		assert.strictEqual(response[1], 0x03);
+
+		const proxyError = await proxyErrorPromise;
+		assert.strictEqual(proxyError.message, 'cannot prepare connection options');
+		assert.strictEqual(proxyError.addr, '127.0.0.1');
+		assert.strictEqual(proxyError.port, 80);
+	} finally {
+		net.createConnection = originalCreateConnection;
+		client.destroy();
+		await closeServer(app);
+	}
+});
+
 await test('invalid handshake version returns general failure', async () => {
 	const app = socks5.createServer();
 	await listenServer(app);

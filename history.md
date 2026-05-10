@@ -1,5 +1,31 @@
 # Changelog for simple-socks
 
+## v3.6.0 - 2026/05/02
+
+* Added `options.connectionOptions` to customize outbound TCP connection options before `net.createConnection`
+
+## v3.5.0 - 2026/03/16
+
+* Added `options.localAddress` and `options.localPort` support for outbound destination connections
+* Added `options.connectTimeout` to fail destination connections that do not complete within the configured timeout
+* Added `options.destinationIdleTimeout` to configure destination socket idle timeout separately from client socket idle timeout
+
+## v3.4.0 - 2026/03/08
+
+* Added `compatAuth` options for controlled RFC 1929 compatibility behavior
+* Added `compatAuth.allowEmptyUsername` and `compatAuth.allowEmptyPassword` options to relax empty credential validation when explicitly enabled
+* Added validation that `compatAuth.strictMethodNegotiation=false` is not supported
+* Documented macOS SOCKS client authentication limitations and compatibility guidance
+
+## v3.3.1 - 2026/03/08
+
+* Expanded integration-style SOCKS5 test coverage
+* Added tests for invalid handshakes, unsupported auth methods, BIND command handling, destination connection errors, `proxyData`, and socket teardown fallback behavior
+
+## v3.3.0 - 2026/03/08
+
+* Refreshed CI/CD tooling
+
 ## v3.2.0 - 2025/09/12
 
 * Removed gulp dev dependency

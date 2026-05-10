@@ -1,6 +1,6 @@
 {
   "name": "simple-socks",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "proxies requests ",
   "type": "module",
   "main": "src/socks5.js",
@@ -45,9 +45,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "c8": "^11.0.0",
-    "dprint": "^0.52.0",
-    "eslint": "^10.0.3",
-    "globals": "^17.4.0"
+    "dprint": "^0.54.0",
+    "eslint": "^10.3.0",
+    "globals": "^17.6.0"
   },
   "dependencies": {
     "binary": "^0.3.0"

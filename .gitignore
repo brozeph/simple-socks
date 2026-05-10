@@ -2,6 +2,7 @@
 .nyc_output
 .vscode
 dist
+docs
 npm-debug.log
 lib-cov
 node_modules
